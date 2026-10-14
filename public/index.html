@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RIFTWATCH</title>
+<script>try { const p=new URLSearchParams(location.search);if (!sessionStorage.getItem('riftwatch-ready') && !p.has('deploy')) location.replace('/hero.html'+(p.get('room')?'?room='+encodeURIComponent(p.get('room')):'')); } catch {}</script>
+<link rel="stylesheet" href="/style.css?v=20261015-scope-cleanup">
+<script type="importmap">{"imports": {"three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/three-mesh-bvh/build/index.module.js", "/js/arm-ik.js": "/js/arm-ik.js?v=20261015-scope-cleanup", "/js/audio.js": "/js/audio.js?v=20261015-scope-cleanup", "/js/figure-rig.js": "/js/figure-rig.js?v=20261015-scope-cleanup", "/js/foot-grounding.js": "/js/foot-grounding.js?v=20261015-scope-cleanup", "/js/hero-motion.js": "/js/hero-motion.js?v=20261015-scope-cleanup", "/js/hero-preview.js": "/js/hero-preview.js?v=20261015-scope-cleanup", "/js/hero-selection.js": "/js/hero-selection.js?v=20261015-scope-cleanup", "/js/hero-weapon.js": "/js/hero-weapon.js?v=20261015-scope-cleanup", "/js/hero.js": "/js/hero.js?v=20261015-scope-cleanup", "/js/main.js": "/js/main.js?v=20261015-scope-cleanup", "/js/maps.js": "/js/maps.js?v=20261015-scope-cleanup", "/js/monsters.js": "/js/monsters.js?v=20261015-scope-cleanup", "/js/network.js": "/js/network.js?v=20261015-scope-cleanup", "/js/operations.js": "/js/operations.js?v=20261015-scope-cleanup", "/js/personal-head.js": "/js/personal-head.js?v=20261015-scope-cleanup", "/js/roster.js": "/js/roster.js?v=20261015-scope-cleanup", "/js/scenery.js": "/js/scenery.js?v=20261015-scope-cleanup", "/js/voice.js": "/js/voice.js?v=20261015-scope-cleanup", "/js/wardrobe.js": "/js/wardrobe.js?v=20261015-scope-cleanup", "/js/radar.js": "/js/radar.js?v=20261015-scope-cleanup", "/js/terrain.js": "/js/terrain.js?v=20261015-scope-cleanup"}}</script>
+</head>
+<body>
+<div id="hud" class="hidden">
+  <div id="top"><span id="wave">LEVEL 1</span><span id="score">0</span><span id="credits">$0</span><span id="left">0 LEFT</span></div>
+  <section id="radar" aria-label="Tactical radar, heading up, 45 meter range">
+    <div class="radar-title"><span><i></i> TACTICAL</span><span id="radar-contacts">00 CONTACTS</span></div>
+    <canvas id="mini" width="480" height="480" aria-label="Circular radar showing nearby terrain, enemies, squadmates and relay"></canvas>
+    <div class="radar-meta"><span>45 m <b>/</b> HEADING UP</span><span id="radar-objective">RELAY</span></div>
+    <div class="radar-legend"><span class="radar-enemy">● HOSTILE</span><span class="radar-squad">◆ SQUAD</span><span class="radar-relay">◇ RELAY</span></div>
+  </section>
+  <div id="compass"></div><div id="objective"><span class="eyebrow">ACTIVE OPERATION</span><h3 id="objective-title">RECOVER THE DATA</h3><p id="objective-detail"></p><div class="objective-track"><div id="objective-progress"></div></div></div><div id="interact"></div><div id="buffs"></div><div id="waypoint"></div><div id="scope-overlay" class="hidden" aria-hidden="true"></div><div id="cross"></div>
+  <div id="hit"></div>
+  <div id="camera-label"></div><div id="protection"></div>
+  <div id="coop-hud"></div><div id="duel-hud" class="hidden"><strong>1V1 DUEL</strong><span id="duel-score">0 — 0</span><small>FIRST TO 5</small></div>
+  <div id="voice-hud"></div><div id="voice-speaking"></div>
+  <div id="hpbox"><div id="hpfill"></div><span id="hptext">100</span></div>
+  <div id="ammobox"><div id="wname"></div><div id="ammo">30 / 120</div><div id="c4txt"></div></div>
+  <div id="banner"></div>
+  <div id="hurt"></div>
+  <div id="bossbar" class="hidden"><div id="bossname"></div><div id="bossbg"><div id="bossfill"></div></div></div>
+  <div id="floaters"></div>
+</div>
+
+<div id="menu" class="overlay"><a class="back-characters" href="/hero.html">← BACK TO CHARACTERS</a>
+  <div class="menu-brand"><span class="eyebrow">HERO DIVISION / FIELD OPERATIONS</span><h1>RIFT<span>WATCH</span><i>01</i></h1><p class="intro">The world broke open.<br><strong>Go take it back.</strong></p><p class="brief">Recover the data. Hold the sector. Make it out alive.</p></div>
+  <p id="loadtxt" role="status">Loading models 0/9</p><a class="hero-link" href="/hero.html">YOUR HERO ↗ <span>Inspect & equip your personal skin</span></a>
+  <div class="deployment-label">CHOOSE YOUR OPERATION <span>05 LOCATIONS / SOLO, CO-OP &amp; 1V1</span></div><div id="modes"><button class="modebtn sel" data-mode="campaign">CAMPAIGN<small>10 sectors + extraction</small></button><button class="modebtn" data-mode="endless">ENDLESS<small>unlimited deployments</small></button><button class="modebtn" data-mode="duel">1V1 DUEL<small>two players · first to 5</small></button></div>
+  <div class="play-options"><span>GRAPHICS</span><button class="graphicsbtn sel" data-graphics="performance">PERFORMANCE</button><button class="graphicsbtn" data-graphics="quality">QUALITY</button><span>CAMERA</span><button class="povbtn sel" data-pov="shoulder">THIRD PERSON</button><button class="povbtn" data-pov="wide">WIDE VIEW</button><button class="povbtn" data-pov="first">FIRST PERSON</button><span>SCOPE VIEW</span><button class="scopebtn sel" data-scope="on">DARK RING</button><button class="scopebtn" data-scope="off">OFF</button><span>DIFFICULTY</span><button class="difficultybtn sel" data-difficulty="relaxed">RELAXED</button><button class="difficultybtn" data-difficulty="standard">STANDARD</button></div>
+  <div id="lobby"><div class="lobby-heading">ONLINE CO-OP <span id="room-code"></span></div><div class="lobby-controls"><input id="player-name" aria-label="Player name" maxlength="24" placeholder="Your name"><button id="create-room">CREATE ROOM</button><input id="join-code" aria-label="Room code" maxlength="6" placeholder="ROOM CODE"><button id="join-room">JOIN ROOM</button><button id="leave-room" class="hidden">LEAVE ROOM</button></div><p id="lobby-status">Play solo, or create a room and invite up to three friends.</p><p id="lobby-players"></p></div>
+  <div id="maps"></div>
+  <p class="keys">WASD / arrows move &middot; Move mouse to look &middot; Shift sprint &middot; Space jump &middot; LMB fire &middot; RMB / C aim &middot; R reload &middot; 1/2/wheel switch gun &middot; G throw C4 &middot; F detonate<br>E hold to recover / extract · E open mystery cache · V switch POV · M mute · Walk over green-cross medkits to heal</p>
+</div>
+
+<div id="map-loading" class="overlay hidden" aria-label="Preparing map" aria-busy="true">
+  <div class="loading-panel">
+    <div class="loading-art" aria-hidden="true"><div id="loading-sector-art" class="map-art"></div><span class="loading-grid"></span><span class="loading-reticle"></span><span class="loading-art-label">SECTOR PREVIEW</span></div>
+    <div class="loading-body"><span class="eyebrow">FIELD OPERATIONS / DEPLOYMENT</span><h2 id="loading-map-name"></h2><p id="loading-map-desc"></p>
+      <ol class="loading-stages"><li data-stage="download">01 &nbsp; DOWNLOAD MAP</li><li data-stage="decode">02 &nbsp; DECODE SCENE</li><li data-stage="collision">03 &nbsp; BUILD COLLISION</li><li data-stage="prepare">04 &nbsp; PREPARE OPERATOR</li></ol>
+      <progress id="map-download-progress" aria-label="Map download" hidden></progress><p id="loading-status" role="status" aria-live="polite">Preparing deployment…</p>
+      <p class="loading-tip">Large maps may take longer. You can return to the map list at any time.</p><a class="loading-back" href="/?deploy=1">← BACK TO MAPS</a>
+    </div>
+  </div>
+</div>
+
+<div id="mobile-controls" class="hidden" aria-label="Touch game controls">
+  <div id="touch-look" aria-label="Drag to look around"></div>
+  <div id="touch-stick" aria-label="Movement joystick"><div id="touch-stick-knob"></div></div>
+  <button class="touch-btn touch-fire" data-touch="fire">FIRE</button><button class="touch-btn touch-aim" data-touch="aim">AIM</button><button class="touch-btn touch-jump" data-touch="jump">JUMP</button><button class="touch-btn touch-run" data-touch="run">RUN</button>
+  <button class="touch-btn touch-reload" data-touch="reload">RELOAD</button><button class="touch-btn touch-swap" data-touch="swap">SWAP</button><button class="touch-btn touch-use" data-touch="use" aria-label="Hold E to interact, recover data or extract">HOLD E</button><button class="touch-btn touch-c4" data-touch="c4">C4</button><button class="touch-btn touch-pov" data-touch="pov">VIEW</button><button class="touch-btn touch-pause" data-touch="pause">Ⅱ</button>
+</div>
+
+<div id="music-controls"><label for="music-volume">MUSIC <span id="music-level">9%</span></label><input id="music-volume" type="range" min="0" max="30" value="9" aria-label="Music volume"></div><div id="voice-controls"><button id="voice-toggle">ENABLE VOICE</button><button id="voice-mute" class="hidden">MUTE MIC</button><span id="voice-status">VOICE OFF</span></div><div id="voice-audio" class="hidden"></div>
+<div id="shop" class="overlay hidden">
+  <h2 id="shoptitle">UPGRADES</h2>
+  <div id="shopcr"></div>
+  <div id="shopgrid"></div>
+  <button id="shopnext">NEXT LEVEL &#9654;</button>
+</div>
+
+<div id="pause" class="overlay hidden"><h2>PAUSED</h2><p id="mouse-status">Click RESUME for continuous mouse look. Esc releases the mouse and pauses.</p><p class="keys">WASD / arrows move · Move mouse to look · E interact · V switch POV</p><button id="windowed">RESUME · CAPTURE MOUSE</button><button id="back-maps">← BACK TO MAPS</button><p class="keys">Move the mouse to turn the camera. Left click fires. Right click or C aims. Esc pauses.</p></div>
+
+<div id="over" class="overlay hidden">
+  <h1 id="overtitle">YOU DIED</h1>
+  <p id="overstats"></p>
+  <button id="restart">PLAY AGAIN</button>
+  <button id="tomenu">MENU</button>
+</div>
+
+<script type="module" src="/js/main.js?v=20261015-scope-cleanup"></script>
+</body>
+</html>
+

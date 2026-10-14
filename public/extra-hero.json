@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "id": "serame-civilian",
+  "name": "KAI",
+  "role": "URBAN SURVIVOR",
+  "file": "figure_360.glb",
+  "hp": 100,
+  "speed": 6.5,
+  "reload": 0.95,
+  "description": "Your supplied figure, with his original face, hair, black shirt, trousers and shoes. An agile urban survivor.",
+  "trait": "LIGHT FOOTED",
+  "traitInfo": "100 health · agile movement · quick reload",
+  "accent": 10813409
+}

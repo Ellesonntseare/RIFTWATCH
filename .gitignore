@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.env
+.env.*
+.cache/
+coverage/
+tests/server-output.log
+tests/server-error.log

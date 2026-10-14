@@ -1,0 +1,4 @@
+models/**/*.glb filter=lfs diff=lfs merge=lfs -text
+models/*.glb filter=lfs diff=lfs merge=lfs -text
+models/**/*.glb.gz filter=lfs diff=lfs merge=lfs -text
+models/*.glb.gz filter=lfs diff=lfs merge=lfs -text

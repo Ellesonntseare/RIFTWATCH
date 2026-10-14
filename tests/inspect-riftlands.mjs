@@ -1,0 +1,2 @@
+import fs from 'node:fs/promises';import * as T from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const b=await fs.readFile('models/skibidi_toilet_77_map.glb'),l=new GLTFLoader();l.register(()=>({name:'NoTextures',loadTexture:()=>Promise.resolve(new T.Texture())}));const g=await l.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');g.scene.updateMatrixWorld(true);g.scene.traverse(o=>{if(o.isMesh){const s=new T.Box3().setFromObject(o).getSize(new T.Vector3());console.log(o.name,o.material.name,JSON.stringify(s.toArray()));}});
