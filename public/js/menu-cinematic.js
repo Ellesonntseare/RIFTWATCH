@@ -43,6 +43,7 @@ function initializeCinematicMenu() {
       <section class="rw-center" aria-label="3D operator showcase">
         <div class="rw-spotlight" aria-hidden="true"></div>
         <div id="rw-hero-stage" role="img" aria-label="Preview of your selected operator"><div id="rw-preview-loading">INITIALIZING OPERATOR...</div></div>
+         <button id="rw-operator-prev" class="rw-operator-arrow rw-operator-prev" type="button" aria-label="Previous operator">‹</button><button id="rw-operator-next" class="rw-operator-arrow rw-operator-next" type="button" aria-label="Next operator">›</button>
         <div class="rw-corner tl"></div><div class="rw-corner tr"></div><div class="rw-corner bl"></div><div class="rw-corner br"></div>
         <div class="rw-hero-caption"><span>● ACTIVE OPERATOR</span><strong id="rw-hero-caption">FIELD COMMANDER</strong><small id="rw-caption-role">TACTICAL DIVISION</small></div>
         <button class="rw-change" type="button" data-rw-open="operator">CHANGE OPERATOR ↗</button>
@@ -142,6 +143,27 @@ function initializeCinematicMenu() {
     updateOperatorPreview(config);
     announceProfileChange();
   }
+  function shiftOperator(direction){
+    const position=HEROES.findIndex(config=>config.id===activeHeroId);
+    selectOperator(HEROES[(position+direction+HEROES.length)%HEROES.length]);
+  }
+  $('rw-operator-prev').addEventListener('click',()=>shiftOperator(-1));
+  $('rw-operator-next').addEventListener('click',()=>shiftOperator(1));
+  const showcase=$('rw-hero-stage');
+  let swipeStart=null;
+  showcase.addEventListener('touchstart',event=>{if(event.touches.length===1)swipeStart={x:event.touches[0].clientX,y:event.touches[0].clientY};},{passive:true});
+  showcase.addEventListener('touchend',event=>{
+    if(!swipeStart||!event.changedTouches.length)return;
+    const dx=event.changedTouches[0].clientX-swipeStart.x,dy=event.changedTouches[0].clientY-swipeStart.y;swipeStart=null;
+    if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.2)shiftOperator(dx<0?1:-1);
+  },{passive:true});
+  showcase.addEventListener('touchcancel',()=>{swipeStart=null;},{passive:true});
+  let lastWheel=0;
+  showcase.addEventListener('wheel',event=>{
+    const amount=Math.abs(event.deltaX)>Math.abs(event.deltaY)?event.deltaX:event.deltaY;
+    if(Math.abs(amount)<20||Date.now()-lastWheel<300)return;
+    event.preventDefault();lastWheel=Date.now();shiftOperator(amount>0?1:-1);
+  },{passive:false});
   function saveCallsign() {
     const name=cleanName(callsign.value) || 'Operator';
     callsign.value=name;

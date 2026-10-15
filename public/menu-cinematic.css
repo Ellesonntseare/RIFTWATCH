@@ -50,7 +50,10 @@
 #menu .rw-promo em {font:10px Consolas,monospace;font-style:normal;letter-spacing:.5px;color:#fff0c7}
 #menu .rw-center {position:relative;min-width:0;min-height:0;z-index:1;isolation:isolate}
 #menu .rw-spotlight {position:absolute;inset:8% -35% 0;z-index:-1;filter:blur(28px);background:radial-gradient(ellipse at 50% 55%,#2b9eb655,transparent 61%)}
-#menu #rw-hero-stage {position:absolute;inset:-30px -12% -30px;overflow:hidden;mask-image:linear-gradient(0deg,transparent 0,#000 14%,#000 85%,transparent 100%)}
+#menu #rw-hero-stage {position:absolute;inset:-30px -12% -30px;overflow:hidden;mask-image:linear-gradient(0deg,transparent 0,#000 14%,#000 85%,transparent 100%);touch-action:pan-y}
+#menu .rw-operator-arrow {position:absolute;top:45%;z-index:3;width:44px;height:44px;padding:0;border:1px solid #79cddd;border-radius:50%;background:#092a3de6;color:#e7fbff;font:30px/1 "Segoe UI",sans-serif;transform:translateY(-50%);touch-action:manipulation}
+#menu .rw-operator-arrow:hover {background:#1b5767}
+#menu .rw-operator-prev {left:4px}#menu .rw-operator-next {right:4px}
 #menu #rw-hero-stage canvas {position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;}
 #menu #rw-preview-loading {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#78c3d1;font:10px Consolas,monospace;letter-spacing:1px;text-align:center;}
 #menu #rw-preview-loading[hidden] {display:none;}
