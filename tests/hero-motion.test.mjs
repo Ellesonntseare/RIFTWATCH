@@ -8,6 +8,26 @@ import {heroMotionClips,createHeroMotion} from '../public/js/hero-motion.js';
 import {HEROES} from '../public/js/roster.js';
 import {rigFigure} from '../public/js/figure-rig.js';
 import {loadMonsterModels,buildMonster,animateMonster,MONSTER_TYPES} from '../public/js/monsters.js';
+
+// These are geometry/animation tests running in Node, not a browser renderer.
+// Provide only the canvas surface needed for a non-rendered blob-shadow texture.
+if (typeof document === 'undefined') globalThis.document = {
+  createElement(tag) {
+    if (tag !== 'canvas') throw Error('Unexpected DOM requirement: ' + tag);
+    return {
+      width: 64, height: 64,
+      getContext(kind) {
+        if (kind !== '2d') throw Error('Unexpected canvas context: ' + kind);
+        return {
+          createRadialGradient() { return {addColorStop() {}}; },
+          fillRect() {},
+          set fillStyle(_) {}
+        };
+      }
+    };
+  }
+};
+
 async function asset(name){const delivery='models/web/'+name;const file=process.env.RIFTWATCH_WEB_MODELS==='1'&&await fs.access(delivery).then(()=>true,()=>false)?delivery:'models/'+name;const bytes=await fs.readFile(file),loader=new GLTFLoader();loader.register(()=>({name:'GeometryOnlyTest',loadTexture:()=>Promise.resolve(new THREE.Texture())}));return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');}
 const soldier=await asset('futuristic_soldier_free.glb');
 const extra=JSON.parse(await fs.readFile('public/extra-hero.json','utf8'));
