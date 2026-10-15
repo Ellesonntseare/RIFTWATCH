@@ -10,6 +10,7 @@ export function createNetwork(callbacks){
   function render(){
     $('room-code').textContent=code ? 'ROOM '+code : '';
     $('leave-room').classList.toggle('hidden',!code);
+    $('copy-invite')?.classList.toggle('hidden',!code);
     $('lobby-players').textContent=[...players.values()].map(p=>`${p.name}${p.id===id?' (you)':''}${p.id===callbacks.hostId?' · host':''}`).join(' / ');
     $('coop-hud').textContent=code ? `${callbacks.mode?.()==='duel'?'1V1':'CO-OP'} ${code} / ${players.size} PLAYERS` : '';
     for(const b of document.querySelectorAll('.mapbtn'))b.disabled=role==='guest'||!(callbacks.canSelectMap?.()??true);
@@ -50,10 +51,18 @@ export function createNetwork(callbacks){
   async function join(type){try{if(voice.enabled)voice.stop();await connect();const hero=selectedHero();send(type,{hero:hero.id,name:hero.name,code:$('join-code').value.trim()});}catch(e){status(e.message);}}
   $('create-room').onclick=()=>join('create');$('join-room').onclick=()=>join('join');
   $('leave-room').onclick=()=>{voice.stop();send('leave');role=null;code=null;players.clear();for(const b of document.querySelectorAll('.mapbtn'))b.disabled=false;render();};
+  // Invite link: friends who open it get the room code filled in and join automatically.
+  if($('copy-invite'))$('copy-invite').onclick=async()=>{
+    const url=`${location.origin}/?room=${encodeURIComponent(code||'')}`;
+    try{if(navigator.share){await navigator.share({title:'Join my RIFTWATCH room',text:'Join my RIFTWATCH room:',url});return;}}catch(e){if(e?.name==='AbortError')return;}
+    try{await navigator.clipboard.writeText(url);status('INVITE LINK COPIED / SEND IT TO YOUR FRIEND');}
+    catch{window.prompt('Copy this invite link and send it to your friend:',url);}
+  };
   $('player-name').value=selectedHero().name;
   $('player-name').readOnly=true;
   $('player-name').title='Change your name on the character selection screen';
   $('join-code').value=new URLSearchParams(location.search).get('room')||'';
+  if($('join-code').value)setTimeout(()=>{if(!code)join('join');},600);
   return {
     players,get id(){return id},get role(){return role},get code(){return code},
     start:data=>send('start',data),action:action=>send('action',{action}),duelFire:data=>send('duel-fire',data),
