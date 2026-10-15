@@ -1192,9 +1192,13 @@ function drawMinimap() {
   $('radar-contacts').textContent=String(info.contacts).padStart(2,'0')+' CONTACTS';
   $('radar-objective').textContent=state.gameMode==='duel'?'SIGNAL JAMMED':state.gameMode==='hunt'?'HUNT THE ISLAND':info.distance===null?'NO ACTIVE RELAY':'RELAY '+info.distance+' m';
 }
+let lastHudText=-Infinity;
 function updateHUD(dt) {
   drawMinimap();
   state.hurt = Math.max(0, state.hurt - dt * 1.5); state.hitT = Math.max(0, state.hitT - dt);
+  // Text/DOM readouts refresh at 10 Hz; per-frame DOM writes cost frame time, especially on phones.
+  const hudNow=performance.now();
+  if(hudNow-lastHudText>=100){lastHudText=hudNow;
   $('hpfill').style.width = Math.max(0, P.hp) / P.maxHp * 100 + '%'; $('hptext').textContent = Math.max(0, Math.ceil(P.hp));
   $('ammo').textContent = P.reloading > 0 ? 'RELOADING' : `${P.ammo} / ${P.reserve}`;
   $('c4txt').textContent = `C4 x${P.c4}   ARMED ${state.c4s.filter(c => c.stuck).length} [F]`;
@@ -1207,6 +1211,7 @@ function updateHUD(dt) {
   $('score').textContent = state.score; $('wname').textContent = CFG.gun.name;
   $('left').textContent = state.gameMode==='duel'?'FIRST TO 5':state.gameMode==='hunt'?`${30-(state.huntKilled||0)} TO HUNT`:`${aliveCount() + state.toSpawn + (state.bossQueued ? 1 : 0)} HOSTILES`;
   $('compass').textContent = ['N','NE','E','SE','S','SW','W','NW'][Math.round((( -P.yaw * 180 / Math.PI) % 360 + 360) % 360 / 45) % 8] + ' / ' + state.map.name.toUpperCase();
+  }
   $('hurt').style.opacity = clamp(state.hurt + (P.hp < 30 && !P.dead ? 0.25 : 0), 0, 1);
   $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);
   state.bannerT -= dt; if (state.bannerT <= 0) $('banner').style.opacity = 0;
