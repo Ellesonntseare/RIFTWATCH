@@ -13,7 +13,7 @@ import { MAPS } from './maps.js';
 import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMonsterDetail, setBlobShadows } from './monsters.js';
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
 import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
-import { installMenuClicks } from './ui-clicks.js?v=20261015-menu-audio';
+import { installMenuClicks } from './ui-clicks.js?v=20261015-audio-startup-fix';
 
 let BVH = null;   // makes raycasts on million-triangle maps fast
 try { BVH = await import('three-mesh-bvh'); THREE.Mesh.prototype.raycast = BVH.acceleratedRaycast; } catch (e) { console.warn('three-mesh-bvh unavailable - big maps will be slow', e); }

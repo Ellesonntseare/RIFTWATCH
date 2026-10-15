@@ -1,4 +1,4 @@
-import {isAudioMuted} from './audio.js';
+import * as audio from './audio.js';
 
 let context;
 let lastClick = 0;
@@ -21,7 +21,7 @@ function note(start, end, duration, volume, delay = 0, type = 'triangle') {
 }
 
 function play(kind) {
-  if (isAudioMuted() || document.hidden || performance.now() - lastClick < 55) return;
+  if (audio.isAudioMuted?.() || document.hidden || performance.now() - lastClick < 55) return;
   lastClick = performance.now();
   try {
     context ||= new (window.AudioContext || window.webkitAudioContext)();

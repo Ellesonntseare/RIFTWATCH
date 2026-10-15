@@ -53,6 +53,7 @@
 #menu #rw-hero-stage {position:absolute;inset:-30px -12% -30px;overflow:hidden;mask-image:linear-gradient(0deg,transparent 0,#000 14%,#000 85%,transparent 100%)}
 #menu #rw-hero-stage canvas {position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;}
 #menu #rw-preview-loading {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#78c3d1;font:10px Consolas,monospace;letter-spacing:1px;text-align:center;}
+#menu #rw-preview-loading[hidden] {display:none;}
 #menu .rw-corner {position:absolute;width:21px;height:21px;opacity:.45;border-color:#82dae2;pointer-events:none}
 #menu .rw-corner.tl {top:4%;left:1%;border-top:1px solid;border-left:1px solid}
 #menu .rw-corner.tr {top:4%;right:1%;border-top:1px solid;border-right:1px solid}
