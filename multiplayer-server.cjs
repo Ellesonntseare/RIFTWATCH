@@ -65,6 +65,13 @@ function attachMultiplayer(server){
       }
       if(m.type==='leave'){leave(peer);send(ws,'left');return;}
       const room=rooms.get(peer.code);if(!room)return send(ws,'error',{message:'Join a room first.'});
+      if(m.type==='profile'){
+        if(room.start)return send(ws,'error',{message:'Change your operator before the match starts.'});
+        peer.hero=HEROES.has(m.hero)?m.hero:peer.hero;
+        peer.name=String(m.name||'Operator').replace(/[<>\x00-\x1f]/g,'').trim().slice(0,24)||'Operator';
+        roster(room);
+        return;
+      }
       if(m.type==='voice-config'){voiceConfig().then(iceServers=>send(ws,'voice-config',{iceServers}));return;}
       if(m.type==='voice-ready'){peer.voice=!!m.enabled;voicePeers(room);return;}
       if(m.type==='voice-signal'&&peer.voice&&room.peers.get(m.to)?.voice&&m.signal&&JSON.stringify(m.signal).length<16000){send(room.peers.get(m.to).ws,'voice-signal',{id:peer.id,signal:m.signal});return;}
