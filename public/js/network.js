@@ -47,10 +47,12 @@ export function createNetwork(callbacks){
       };
     });
   }
-  async function join(type){try{if(voice.enabled)voice.stop();await connect();const hero=selectedHero();send(type,{hero:hero.id,name:$('player-name').value.trim()||hero.name,code:$('join-code').value.trim()});}catch(e){status(e.message);}}
+  async function join(type){try{if(voice.enabled)voice.stop();await connect();const hero=selectedHero();send(type,{hero:hero.id,name:hero.name,code:$('join-code').value.trim()});}catch(e){status(e.message);}}
   $('create-room').onclick=()=>join('create');$('join-room').onclick=()=>join('join');
   $('leave-room').onclick=()=>{voice.stop();send('leave');role=null;code=null;players.clear();for(const b of document.querySelectorAll('.mapbtn'))b.disabled=false;render();};
   $('player-name').value=selectedHero().name;
+  $('player-name').readOnly=true;
+  $('player-name').title='Change your name on the character selection screen';
   $('join-code').value=new URLSearchParams(location.search).get('room')||'';
   return {
     players,get id(){return id},get role(){return role},get code(){return code},

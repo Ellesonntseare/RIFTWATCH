@@ -68,6 +68,15 @@ const open = (name, desc, file, fit, o = {}) => ({
 });
 
 export const MAPS = {
+  island: {
+    name: 'Shatter Island', desc: 'Open island · forest trails · abandoned field camp',
+    island:true, size:[360,360], ring:false, start:[0,0], spawns:[[0,0]],
+    sky:0x86b7c0, fog:[0x9abac0,80,310], hemi:[0xd4e9d9,0x4c6c59,1.25], sun:[0xffe7ba,2],
+    colors:{ground:0x62795b,wall:0x8a9183,crate:0x80694f,pillar:0x757e78,leaf:0x426b48},
+    blocks:[...building(25,16,12,10,3,'s',3.5),...building(-46,35,11,9,3,'e',3.5),...building(64,-47,10,8,3,'w',3.5),
+      ['crate',22,12,2,2,1.1],['crate',-48,34,2,2,1.1],['crate',65,-46,2,2,1.1],['wall',35,-28,9,1,2.4],['wall',-55,-10,7,1,2.4]],
+    barrels:[[25,17],[-47,34],[40,-25],[-20,-38]],lights:[],
+  },
   skibidi: open('The Riftlands', 'Ruined city · hills · long sightlines', 'skibidi_toilet_77_map.glb', 700, { worldScale:.5, sky: 0x7d8fb0, fog: [0x8794b0, 60, 260] }),
   ep73: open('Ashfall District', 'Urban ruins · close quarters · street supplies', 'map_ep_73.glb', 300, {worldScale:1}),
   outpost: buildOutpost(),

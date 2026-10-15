@@ -58,6 +58,22 @@ export function createOperations(api) {
       const p = safeSpot(4, 18); if (p) place(kind, p);
     }
   }
+  function startHunt(){
+    while(items.length)remove(items[0]);
+    for(const key in buffs)buffs[key]=0;
+    mission={phase:'hunt',sector:0,progress:0,completed:false,relay:null};
+    const layout=[
+      ['med',25,16],['ammo',-46,35],['damage',64,-47],
+      ['med',-30,-28],['shield',9,55],['ammo',54,37],
+      ['speed',78,-12],['med',29,-76],['cache',-38,-75],
+      ['gun1',-86,-27],['ammo',-81,63],['med',-2,105],
+    ];
+    for(const [kind,x,z] of layout){
+      let px=x,pz=z;
+      for(let i=0;i<12&&blocked(px,pz,.7);i++){px=x+Math.cos(i*2.4)*(2+i);pz=z+Math.sin(i*2.4)*(2+i);}
+      if(!blocked(px,pz,.7)&&items.every(item=>Math.hypot(item.pos.x-px,item.pos.z-pz)>10))place(kind,new THREE.Vector3(px,0,pz));
+    }
+  }
   function grant(kind) {
     if (kind === 'med') P.hp = Math.min(P.maxHp, P.hp + 55);
     else if (kind === 'ammo') refill();
@@ -88,6 +104,15 @@ export function createOperations(api) {
       if(/^gun[01]$/.test(item.kind))prompt=(api.touchDevice?'TAP HOLD E':'[E]')+' PICK UP '+(item.kind==='gun0'?'M4A1':'LASER MG');
       if(wants){if(state.coop==='guest'){if(!item.pending||item.age-item.pending>1.2){api.requestPickup?.(item.id);item.pending=item.age;}}else collect(item);}
     }
+    if(mission.phase==='hunt'){
+      el('objective-title').textContent='HUNT / CLEAR THE ISLAND';
+      el('objective-detail').textContent=`${state.huntKilled||0} / 30 monsters eliminated · search the forest and huts`;
+      el('objective-progress').style.width=`${Math.min(100,(state.huntKilled||0)/30*100)}%`;
+      el('interact').textContent=prompt;
+      el('waypoint').style.display='none';
+      el('buffs').textContent=Object.entries(buffs).filter(([,v])=>v>0).map(([k,v])=>`${k.toUpperCase()} ${Math.ceil(v)}s`).join('  /  ');
+      interact=false;return;
+    }
     const dist = mission.relay.pos.distanceTo(P.pos), near = dist < 3;
     const remoteHolding=api.remoteInteractions?.().some(p=>p.held&&p.pos.distanceTo(mission.relay.pos)<3) || false;
     if (mission.phase === 'recover') {
@@ -115,7 +140,7 @@ export function createOperations(api) {
     interact = false;
   }
   return {
-    start, update, buffs, items, get ready() { return !!mission?.completed; },
+    start, startHunt, update, buffs, items, get ready() { return !!mission?.completed; },
     input(down) { held = down; if (down) interact = true; },
     drop(pos) { if (items.length < 24 && Math.random() < .55) place(P.hp<P.maxHp*.7 || Math.random()<.65 ? 'med' : 'ammo', pos); },
     grant,
@@ -126,7 +151,7 @@ export function createOperations(api) {
       if(mission?.sector!==data.sector){for(const k in buffs)buffs[k]=0;}
       const ids=new Set(data.items.map(i=>i.id));for(const item of [...items])if(!ids.has(item.id))remove(item);
       for(const s of data.items){let item=items.find(i=>i.id===s.id);if(item && (item.kind!==s.kind||!item.pos.equals(new THREE.Vector3(...s.pos)))){remove(item);item=null;}if(!item)place(s.kind,new THREE.Vector3(...s.pos),s.id);}
-      const relay=items.find(i=>i.kind==='relay');if(relay)mission={...data,relay};
+      const relay=items.find(i=>i.kind==='relay');mission={...data,relay:relay||null};
     },
   };
 }

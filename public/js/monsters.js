@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import {createFootGrounding} from './foot-grounding.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 // h = height in metres, headFrom = fraction of height above which a hit counts as a headshot
 export const MONSTER_TYPES = {
@@ -16,6 +17,25 @@ export const MONSTER_TYPES = {
 };
 const FILES = { robot: 'gun-bot_with_walk_and_idle_animation.glb', winter: 'winter_soldier_-_summer_soldier.glb', soldier: 'futuristic_soldier_free.glb', demon: 'crimson_fire_demon_-_triposr_vs_supavoxel.glb', brute: 'horned_minotaur_demon_-_png_to_stl_-_supavoxel.glb' };
 const tpl = {};
+const distantShapes = new Map();
+
+function distantShape(T) {
+  if (distantShapes.has(T.name)) return distantShapes.get(T.name);
+  const pieces = [];
+  const box = (w, h, d, x, y, z) => {
+    const geometry = new THREE.BoxGeometry(w, h, d);
+    geometry.translate(x, y, z); pieces.push(geometry);
+  };
+  // One shared draw call per distant actor, at the same world height as its full rig.
+  box(.28, .43, .22, -.18, .22, 0); box(.28, .43, .22, .18, .22, 0);
+  box(.72, .68, .4, 0, .75, 0);
+  box(.27, .55, .27, -.48, .72, 0); box(.27, .55, .27, .48, .72, 0);
+  box(.36, .34, .32, 0, 1.27, 0);
+  const geometry = mergeGeometries(pieces);
+  pieces.forEach(piece => piece.dispose());
+  const material = new THREE.MeshLambertMaterial({color: T.tint || (T.model === 'robot' ? 0x78969d : 0x796c5f)});
+  const shape = {geometry, material}; distantShapes.set(T.name, shape); return shape;
+}
 
 export async function loadMonsterModels(loader, onStep, bvh) {
   await Promise.all(Object.entries(FILES).map(async ([k, f]) => {
@@ -62,6 +82,12 @@ export function buildMonster(type) {
     }
   } else inner = fallback(T);
   group.add(inner); rig.inner = inner;rig.groundFeet=createFootGrounding(inner,group);
+  const distant = distantShape(T);
+  rig.distant = new THREE.Mesh(distant.geometry, distant.material);
+  rig.distant.scale.set(T.h / 1.5, T.h / 1.5, T.h / 1.5);
+  rig.distant.visible = false;
+  rig.distant.frustumCulled = true;
+  group.add(rig.distant);
   if (T.proxy && t) {            // heavy static skinned model: shoot simple head/body boxes instead of 166k triangles
     inner.traverse(o => { if (o.isSkinnedMesh) o.raycast = () => {}; });
     const hide = new THREE.MeshBasicMaterial({ visible: false }), hh = T.h * (1 - T.headFrom);
@@ -72,6 +98,18 @@ export function buildMonster(type) {
   return { group, parts: {}, mats };
 }
 
+export function setMonsterDetail(m, distance, lowPower) {
+  const rig = m.group.userData.rig;
+  if (!rig) return;
+  const threshold = lowPower ? 34 : 85;
+  const distant = rig.distant.visible ? distance > threshold - 5 : distance > threshold + 5;
+  if (distant === rig.distant.visible) return;
+  rig.distant.visible = distant;
+  rig.inner.visible = !distant;
+  if (distant) rig.mixer?.stopAllAction();
+  else rig.cur = null;
+}
+
 function play(rig, name) {
   if (rig.cur === name || !rig.actions[name]) return;
   const n = rig.actions[name], o = rig.actions[rig.cur];
@@ -80,6 +118,7 @@ function play(rig, name) {
 
 export function animateMonster(m, dt, lowDetail=false) {
   const rig = m.group.userData.rig; if (!rig) return;
+  if (rig.distant.visible) return;
   if(lowDetail){rig.animationDebt=(rig.animationDebt||0)+dt;if(rig.animationDebt<.12)return;dt=rig.animationDebt;rig.animationDebt=0;}
   else if(rig.animationDebt){dt+=rig.animationDebt;rig.animationDebt=0;}
   const T = m.T;

@@ -24,13 +24,22 @@ function sign(text, sub) {
 
 export async function dressMap(state, floorAt, buildCollision) {
   const group=new THREE.Group(); group.name='RIFTWATCH field architecture'; state.world.add(group);
-  const add=async(file,height,x,z,rotation=0)=>{
+  const add=async(file,height,x,z,rotation=0,solid=true)=>{
     const ground=state.collMesh ? floorAt(x,z,(state.map.startY||0)+0.6,2) : 0;
     if(ground===null) return;
-    try { const p=await prop(file,height);p.position.set(x,ground,z);p.rotation.y=rotation;group.add(p); }
+    try { const p=await prop(file,height);p.position.set(x,ground,z);p.rotation.y=rotation;if(!solid)p.traverse(o=>{if(o.isMesh)o.userData.dynamic=true;});group.add(p);return p; }
     catch(e){console.warn('Scenery unavailable:',file,e.message);}
   };
-  if(state.mapKey==='outpost') {
+  if(state.mapKey==='island'){
+    const rabbits=await Promise.all([
+      add('office_is_old_abandoned_free.glb',3.7,105,70,Math.PI/3),
+      add('old_gun_cabinet_with_animations.glb',1.9,19,14,Math.PI/2),
+      add('rabbit_-_realistic_3d_model_demo_free.glb',.65,-25,-38,.7,false),
+      add('rabbit_-_realistic_3d_model_demo_free.glb',.65,42,-48,2.4,false),
+      add('rabbit_-_realistic_3d_model_demo_free.glb',.65,-70,62,1.2,false),
+    ]);
+    state.wildlife=rabbits.slice(2).filter(Boolean).map((object,i)=>({object,y:object.position.y,phase:i*2.1}));
+  }else if(state.mapKey==='outpost') {
     await Promise.all([
       add('office_is_old_abandoned_free.glb',3.65,-17,48,Math.PI/2),
       add('office_is_old_abandoned_free.glb',3.65,18,52,-Math.PI/2),

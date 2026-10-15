@@ -10,7 +10,7 @@ import { createNetwork } from './network.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MAPS } from './maps.js';
-import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels } from './monsters.js';
+import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMonsterDetail } from './monsters.js';
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
 import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
 import { installMenuClicks } from './ui-clicks.js?v=20261015-menu-audio';
@@ -32,7 +32,8 @@ const CFG = {
 };
 
 const $ = id => document.getElementById(id);
-const touchDevice = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
+// Touch laptops and the old touch=1 test URL must keep the PC mouse controls.
+const touchDevice = matchMedia('(pointer: coarse)').matches && /Android|iPhone|iPod/i.test(navigator.userAgent);
 const touchMove = {x:0,y:0};
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -226,10 +227,10 @@ function boxGeo(w, h, d) {
 
 function loadMap(key) {
   if (state.world) scene.remove(state.world);
-  const map = MAPS[key]; state.map = map; state.collMesh = null; state.extraCollMesh = null; state.waterMesh=null; state.nextMonsterId=0; state.sharedBarrelsInitialized=false; state.lastSharedShop=0;
+  const map = MAPS[key]; state.map = map; state.collMesh = null; state.streamCollMeshes=[]; state.extraCollMesh = null; state.waterMesh=null; state.nextMonsterId=0; state.sharedBarrelsInitialized=false; state.lastSharedShop=0;
   camera.far = Math.max(150, map.fog[2] + 30); camera.updateProjectionMatrix();
   const world = new THREE.Group(); scene.add(world); state.world = world;
-  Object.assign(state, { colliders: [], wallMeshes: [], barrels: [], monsters: [], c4s: [], particles: [], bloodStains: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0, projs: [], rings: [] });
+  Object.assign(state, { colliders: [], wallMeshes: [], barrels: [], monsters: [], wildlife:[], c4s: [], particles: [], bloodStains: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0, projs: [], rings: [] });
 
   scene.background = new THREE.Color(map.sky);
   scene.fog = new THREE.Fog(map.fog[0], map.fog[1], map.fog[2]);
@@ -243,7 +244,11 @@ function loadMap(key) {
   if(!touchDevice&&graphicsMode==='quality')for (const [x, y, z, col, inten] of map.lights) { const l = new THREE.PointLight(col, inten, 18, 2); l.position.set(x, y, z); world.add(l); }
   for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xff8833, 0, 30, 2); if(!touchDevice&&graphicsMode==='quality')world.add(l); state.fxLights.push(l); }
 
-  if (!map.open) { const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: panelTexture(map.colors.ground, [W / 4, D / 4]), roughness: 0.95 }));
+  if(map.island){
+    const sea=new THREE.Mesh(new THREE.PlaneGeometry(W*1.6,D*1.6),new THREE.MeshPhongMaterial({color:0x317c91,shininess:70,transparent:true,opacity:.92}));
+    sea.rotation.x=-Math.PI/2;sea.position.y=-.45;world.add(sea);
+  }
+  if (!map.open) { const ground = new THREE.Mesh(map.island?new THREE.CircleGeometry(W*.43,96):new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: panelTexture(map.colors.ground, [W / 4, D / 4]), roughness: 0.95 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; world.add(ground); state.wallMeshes.push(ground); }
 
   const mats = {};
@@ -272,9 +277,24 @@ function loadMap(key) {
     state.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, h: hh });
   };
   const t = 2;
-  if (!map.open) { addBlock('wall', 0, -(D / 2 + t / 2), W + 2 * t, t, 8); addBlock('wall', 0, D / 2 + t / 2, W + 2 * t, t, 8); }
-  if (!map.open) { addBlock('wall', -(W / 2 + t / 2), 0, t, D, 8); addBlock('wall', W / 2 + t / 2, 0, t, D, 8); }
+  if (!map.open&&!map.island) { addBlock('wall', 0, -(D / 2 + t / 2), W + 2 * t, t, 8); addBlock('wall', 0, D / 2 + t / 2, W + 2 * t, t, 8); }
+  if (!map.open&&!map.island) { addBlock('wall', -(W / 2 + t / 2), 0, t, D, 8); addBlock('wall', W / 2 + t / 2, 0, t, D, 8); }
   for (const b of map.blocks) addBlock(...b);
+  if(map.island){
+    const trunks=new THREE.InstancedMesh(trunkGeo,mats.trunk,95),crowns=new THREE.InstancedMesh(canopyGeo,mats.leaf,95),dummy=new THREE.Object3D();
+    let seed=9147;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    let count=0;
+    while(count<95){
+      const a=random()*Math.PI*2,r=22+Math.sqrt(random())*125,x=Math.cos(a)*r,z=Math.sin(a)*r;
+      if(Math.hypot(x-25,z-16)<15||Math.hypot(x+46,z-35)<14||Math.hypot(x-64,z+47)<13||Math.hypot(x-105,z-70)<14||Math.hypot(x,z)<21)continue;
+      const s=.8+random()*.7;
+      dummy.position.set(x,1.5*s,z);dummy.scale.setScalar(s);dummy.updateMatrix();trunks.setMatrixAt(count,dummy.matrix);
+      dummy.position.set(x,5.5*s,z);dummy.updateMatrix();crowns.setMatrixAt(count,dummy.matrix);
+      state.colliders.push({minX:x-.34*s,maxX:x+.34*s,minZ:z-.34*s,maxZ:z+.34*s,h:3*s});count++;
+    }
+    trunks.instanceMatrix.needsUpdate=crowns.instanceMatrix.needsUpdate=true;
+    trunks.computeBoundingSphere();crowns.computeBoundingSphere();world.add(trunks,crowns);state.wallMeshes.push(trunks);
+  }
   for (const [x, z] of map.barrels) spawnBarrel(x, z);
   buildMinimap();
 }
@@ -295,18 +315,20 @@ function releaseUnusedMaps(keepKey){
     for(const texture of textures)texture.dispose();
     for(const geometry of geometries)geometry.dispose();
     cached.collMesh.geometry.dispose();cached.waterMesh.geometry.dispose();
+    for(const mesh of cached.streamCollMeshes)mesh.geometry.dispose();
     delete mapCache[key];
   }
 }
-function buildCollision(root,waterOnly=false) {
+function buildCollision(root,waterOnly=false,candidates=null) {
   const meshes = []; let nv = 0, ni = 0;
-  root.traverse(o => {
+  const collect=o => {
     if (!o.isMesh || o.userData.dynamic || !o.geometry.attributes.position) return;
     if(isWaterSurface(o)!==waterOnly)return;
     const mt = Array.isArray(o.material) ? o.material[0] : o.material;
     if (!waterOnly && mt && mt.transparent && mt.opacity < 0.9) return;
     meshes.push(o); nv += o.geometry.attributes.position.count; ni += o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count;
-  });
+  };
+  if(candidates)for(const mesh of candidates)collect(mesh);else root.traverse(collect);
   const pos = new Float32Array(nv * 3), idx = new Uint32Array(ni), v = new THREE.Vector3();
   let vo = 0, io = 0;
   for (const o of meshes) {
@@ -318,6 +340,28 @@ function buildCollision(root,waterOnly=false) {
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
   if (BVH && ni) geo.boundsTree = new BVH.MeshBVH(geo);
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+}
+function streamMapCollision(c){
+  if(c.streaming || !c.pending.length)return;
+  c.streaming=true;
+  const step=()=>{
+    if(mapCache[c.key]!==c){c.streaming=false;return;}
+    if(state.mapKey!==c.key||state.mode!=='playing'){
+      c.streaming=false;return;
+    }
+    const mesh=c.pending.shift();
+    if(!mesh){c.streaming=false;return;}
+    const part=buildCollision(c.root,false,[mesh]);
+    if(part.geometry.index.count){
+      part.geometry.computeBoundingBox();
+      c.streamCollMeshes.push(part);
+      state.streamCollMeshes.push(part);
+      state.wallMeshes.push(part);
+    }else part.geometry.dispose();
+    mesh.visible=true;
+    setTimeout(step,60);
+  };
+  setTimeout(step,100);
 }
 const tick = () => new Promise(r => setTimeout(r, 30));
 function loadingStage(stage, message) {
@@ -360,10 +404,19 @@ async function loadOpenWorld(map) {
     const k = mapWorldScale(map,size);
     root.scale.setScalar(k); root.position.set(-ctr.x * k, -box.min.y * k, -ctr.z * k); root.updateMatrixWorld(true);
     root.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
-    loadingStage('collision', 'Building solid ground and water boundaries…'); await tick();
-    c = mapCache[state.mapKey] = { root, collMesh: buildCollision(root), waterMesh:buildCollision(root,true), w: size.x * k, d: size.z * k, top: size.y * k + 20 };
+    loadingStage('collision', 'Preparing nearby ground and water boundaries…'); await tick();
+    const near=[],far=[];
+    root.traverse(mesh=>{
+      if(!mesh.isMesh||isWaterSurface(mesh))return;
+      const box=new THREE.Box3().setFromObject(mesh);
+      const dx=Math.max(box.min.x,0,-box.max.x),dz=Math.max(box.min.z,0,-box.max.z);
+      (Math.hypot(dx,dz)<70?near:far).push(mesh);
+    });
+    // The GLB is one download; collision preparation and distant scene reveal are incremental.
+    for(const mesh of far)mesh.visible=false;
+    c = mapCache[state.mapKey] = { key:state.mapKey, root, collMesh: buildCollision(root,false,near), waterMesh:buildCollision(root,true), streamCollMeshes:[], pending:far, streaming:false, w: size.x * k, d: size.z * k, top: size.y * k + 20 };
   }
-  state.world.add(c.root); state.waterMesh=c.waterMesh;state.mapTop=c.top; state.collMesh = c.collMesh; state.wallMeshes = [c.collMesh]; state.minY = -60;
+  state.world.add(c.root); state.waterMesh=c.waterMesh;state.mapTop=c.top; state.collMesh = c.collMesh; state.streamCollMeshes=[...c.streamCollMeshes]; state.wallMeshes = [c.collMesh,...c.streamCollMeshes]; state.minY = -60;
   map.size = [c.w, c.d];
   if (!c.start) {                                               // find open ground near the middle
     const pts = [];
@@ -391,8 +444,10 @@ function castRay(o, d, far) {
   const cm = state.collMesh; if (!cm) return null;
   if (cm.geometry.boundsTree) {
     _r.origin.copy(o); _r.direction.copy(d);
-    const base=cm.geometry.boundsTree.raycastFirst(_r,THREE.DoubleSide,0,far),extra=state.extraCollMesh?.geometry.boundsTree?.raycastFirst(_r,THREE.DoubleSide,0,far);
-    return extra && (!base || extra.distance<base.distance) ? extra : base || null;
+    let hit=cm.geometry.boundsTree.raycastFirst(_r,THREE.DoubleSide,0,far);
+    for(const mesh of state.streamCollMeshes){if(!_r.intersectsBox(mesh.geometry.boundingBox))continue;const next=mesh.geometry.boundsTree?.raycastFirst(_r,THREE.DoubleSide,0,hit?.distance??far);if(next&&(!hit||next.distance<hit.distance))hit=next;}
+    const extra=state.extraCollMesh?.geometry.boundsTree?.raycastFirst(_r,THREE.DoubleSide,0,hit?.distance??far);
+    return extra && (!hit || extra.distance<hit.distance) ? extra : hit || null;
   }
   _rc.set(o, d); _rc.far = far; return _rc.intersectObject(cm)[0] || null;
 }
@@ -421,6 +476,7 @@ function resolveOpen(pos, r, feetY, player) {
 }
 function resolveCircle(pos, r, feetY, canClimb) {
   if (state.collMesh) return resolveOpen(pos, r, feetY, canClimb);
+  if(state.map.island){const edge=state.map.size[0]*.43-r-1,dist=Math.hypot(pos.x,pos.z);if(dist>edge){pos.x*=edge/dist;pos.z*=edge/dist;}}
   let floor = 0;
   for (const c of state.colliders) {
     const cx = clamp(pos.x, c.minX, c.maxX), cz = clamp(pos.z, c.minZ, c.maxZ);
@@ -588,7 +644,7 @@ function damageMonster(m, dmg, point, gib = false, head = false) {
   emit(bleeds?'blood':'spark', point, gib ? 12 : head ? 16 : 7, head ? 5 : 3.5, 0.6, 1, 0.4);
   let pts = gib ? 0 : head ? 50 : 10;
   if (m.hp <= 0) {
-    m.dead = true; pts += m.T.score + (head ? Math.round(m.T.score * 0.5) : 0); state.kills++; sfx.kill(); operations.drop(new THREE.Vector3(m.x, m.y || 0, m.z));
+    m.dead = true; pts += m.T.score + (head ? Math.round(m.T.score * 0.5) : 0); state.kills++; if(state.gameMode==='hunt')state.huntKilled++; sfx.kill(); operations.drop(new THREE.Vector3(m.x, m.y || 0, m.z));
     if(bleeds){emit('blood', new THREE.Vector3(m.x, (m.y || 0) + 1, m.z), 14, 4, 0.8, 1.3, 0.6);addBloodStain(m);}
     m.moving = false; m.attackAnim = 0; m.windup = 0; m.slamT = 0; if (m.aim) m.aim.visible = false;
     if (m.T.boss) { banner('BOSS DOWN  +500$'); state.credits += 500; P.hp = Math.min(P.maxHp, P.hp + 40); }
@@ -620,6 +676,7 @@ function updateMonsters(dt) {
     const player=closestPlayer(m);m.target=player;
     m.flash -= dt;
     if (m.dead) {
+      setMonsterDetail(m,Math.hypot(m.x-P.pos.x,m.z-P.pos.z),touchDevice||graphicsMode==='performance');
       m.deadT += dt;
       m.group.rotation.x = -Math.min(1, m.deadT / 0.5) * Math.PI / 2;
       if (m.deadT > 3) m.group.position.y -= dt * 0.5;
@@ -628,6 +685,7 @@ function updateMonsters(dt) {
       continue;
     }
     const dx = player.pos.x - m.x, dz = player.pos.z - m.z, dist = Math.hypot(dx, dz) || 0.001;
+    setMonsterDetail(m,Math.hypot(m.x-P.pos.x,m.z-P.pos.z),touchDevice||graphicsMode==='performance');
     if (state.map.ring && dist > 75 && !T.stationary) { const s = ringSpot(); if (s) { m.x = s[0]; m.z = s[1]; m.y = s[2] || 0; m.lastX = m.x; m.lastZ = m.z; m.group.position.set(m.x, m.y || 0, m.z); } continue; }
     const nx = dx / dist, nz = dz / dist, speed = T.speed * m.speedMul;
     m.group.rotation.y = angleLerp(m.group.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 10));
@@ -828,6 +886,25 @@ function startWave(n) {
   const ns = Math.min(3, 1 + Math.floor(n / 3)); spawnSentries(ns);
   banner((n % 5 === 0 ? `LEVEL ${n} - BOSS` : `LEVEL ${n}`) + `  \u00b7  ${ns} SENTR${ns > 1 ? 'IES' : 'Y'}`); sfx.wave();
 }
+function huntSpot(){
+  for(let i=0;i<100;i++){
+    const a=rand(0,Math.PI*2),r=rand(38,140),x=Math.cos(a)*r,z=Math.sin(a)*r;
+    if(fieldBlocked(x,z,1)||combatPlayers().some(p=>!p.dead&&Math.hypot(p.pos.x-x,p.pos.z-z)<28)||state.monsters.some(m=>!m.dead&&Math.hypot(m.x-x,m.z-z)<8))continue;
+    return [x,z];
+  }
+  return null;
+}
+function spawnHuntMonster(){
+  const spot=huntSpot();if(!spot)return false;
+  const roll=Math.random(),type=roll<.56?'grunt':roll<.77?'runner':roll<.94?'shooter':'drone';
+  spawnMonster(type,...spot);return true;
+}
+function startHunt(){
+  state.wave=1;state.huntKilled=0;state.toSpawn=30;state.spawnTimer=3;state.inter=0;state.bossQueued=false;
+  operations.startHunt();
+  for(let i=0;i<6;i++)if(spawnHuntMonster())state.toSpawn--;
+  banner('ISLAND HUNT · ELIMINATE 30 MONSTERS');sfx.wave();
+}
 function pickType() {
   const w = state.wave, r = Math.random();
   if (w >= 2 && r < 0.15 && state.monsters.filter(m => !m.dead && m.type === 'drone').length < 3) return 'drone';
@@ -862,6 +939,11 @@ function spawnWaveMonster(forced) {
 }
 function updateWaves(dt) {
   if (state.mode !== 'playing') return;
+  if(state.gameMode==='hunt'){
+    if(state.toSpawn>0){state.spawnTimer-=dt;if(state.spawnTimer<=0){if(aliveCount()<10&&spawnHuntMonster())state.toSpawn--;state.spawnTimer=rand(2.8,4.2);}}
+    if(state.toSpawn===0&&aliveCount()===0&&state.huntKilled>=30)endMatch(true);
+    return;
+  }
   if (state.inter > 0) { state.inter -= dt; if (state.inter <= 0) openShop(); return; }
   if (state.bossQueued) { state.bossT -= dt; if (state.bossT <= 0) { if (spawnWaveMonster('boss')) { state.bossQueued = false; banner('BOSS: MINOTAUR WARLORD'); sfx.growl(1); } else state.bossT = 1; } }
   if (state.toSpawn > 0) {
@@ -1108,7 +1190,7 @@ function drawMinimap() {
   const info=renderRadar($('mini'),{player:P,map:state.map,background:miniStatic,backgroundScale:MSC,
     monsters:state.monsters,items:state.gameMode==='duel'?[]:operations.items,peers:state.gameMode==='duel'?[]:network.players.values(),selfId:network.id,time:state.time});
   $('radar-contacts').textContent=String(info.contacts).padStart(2,'0')+' CONTACTS';
-  $('radar-objective').textContent=state.gameMode==='duel'?'SIGNAL JAMMED':info.distance===null?'NO ACTIVE RELAY':'RELAY '+info.distance+' m';
+  $('radar-objective').textContent=state.gameMode==='duel'?'SIGNAL JAMMED':state.gameMode==='hunt'?'HUNT THE ISLAND':info.distance===null?'NO ACTIVE RELAY':'RELAY '+info.distance+' m';
 }
 function updateHUD(dt) {
   drawMinimap();
@@ -1118,12 +1200,12 @@ function updateHUD(dt) {
   $('c4txt').textContent = `C4 x${P.c4}   ARMED ${state.c4s.filter(c => c.stuck).length} [F]`;
   $('camera-label').textContent = (state.cameraMode === 'first' ? 'FIRST PERSON' : state.cameraMode === 'wide' ? 'THIRD PERSON / WIDE' : 'THIRD PERSON / SHOULDER') + ' · V SWITCH';
   $('protection').textContent = P.spawnShield > 0 ? `DEPLOYMENT SHIELD ${Math.ceil(P.spawnShield)}s` : '';
-  $('wave').textContent = state.gameMode==='duel'?'1V1 DUEL':state.inter > 0 ? `LEVEL ${state.wave} CLEARED` : `LEVEL ${state.wave}`;
+  $('wave').textContent = state.gameMode==='duel'?'1V1 DUEL':state.gameMode==='hunt'?`ISLAND HUNT ${state.huntKilled||0}/30`:state.inter > 0 ? `LEVEL ${state.wave} CLEARED` : `LEVEL ${state.wave}`;
   const boss = state.monsters.find(m => m.T.boss && !m.dead); $('bossbar').classList.toggle('hidden', !boss);
   if (boss) { $('bossname').textContent = boss.T.name; $('bossfill').style.width = Math.max(0, boss.hp / boss.maxhp * 100) + '%'; }
   $('credits').textContent = '$' + state.credits;
   $('score').textContent = state.score; $('wname').textContent = CFG.gun.name;
-  $('left').textContent = state.gameMode==='duel'?'FIRST TO 5':`${aliveCount() + state.toSpawn + (state.bossQueued ? 1 : 0)} HOSTILES`;
+  $('left').textContent = state.gameMode==='duel'?'FIRST TO 5':state.gameMode==='hunt'?`${30-(state.huntKilled||0)} TO HUNT`:`${aliveCount() + state.toSpawn + (state.bossQueued ? 1 : 0)} HOSTILES`;
   $('compass').textContent = ['N','NE','E','SE','S','SW','W','NW'][Math.round((( -P.yaw * 180 / Math.PI) % 360 + 360) % 360 / 45) % 8] + ' / ' + state.map.name.toUpperCase();
   $('hurt').style.opacity = clamp(state.hurt + (P.hp < 30 && !P.dead ? 0.25 : 0), 0, 1);
   $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);
@@ -1141,6 +1223,7 @@ function update(dt) {
     updateC4(dt);
   }
   updateRemotePlayers(dt);
+  for(const animal of state.wildlife){animal.phase+=dt*2;animal.object.position.y=animal.y+Math.max(0,Math.sin(animal.phase))*.12;}
   updateFx(dt); updateParticles(dt); updateFloaters(dt); updateProjs(dt); updateRings(dt); updateTracers(dt); updateGun(dt); updateHUD(dt);
 }
 // Lower resolution only after sustained slow frames; avoid reacting to loading stalls.
@@ -1212,7 +1295,8 @@ function duelGuestSpawn(host){
 }
 
 async function startGame(key,setup=null) {
-  if(setup?.gameMode)state.gameMode=setup.gameMode;
+  if(setup?.gameMode){state.gameMode=setup.gameMode;updateModeMenu();}
+  if(state.gameMode==='hunt')key='island';
   if(state.gameMode==='duel'&&!setup&&(network.role!=='host'||network.players.size!==2)){$('loadtxt').textContent='1V1 needs a room with exactly two players. Create a room, invite a friend, then choose a map.';return;}
   initAudio();
   state.mode='loading'; state.paused=true; document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=true);
@@ -1258,14 +1342,15 @@ async function startGame(key,setup=null) {
   else{$('duel-hud').classList.add('hidden');$('objective').classList.remove('hidden');$('radar').classList.remove('duel-radar');}
   state.coopSpawn=P.pos.clone();P.vel.set(0,0,0);P.yaw=Math.atan2(P.pos.x,P.pos.z);
   Object.assign(state, { score: 0, kills: 0, hurt: 0, shake: 0, hitT: 0, flashT: 0, paused: false, mode: 'playing' });
+  if(state.map.open)streamMapCollision(mapCache[key]);
   for (const k in keys) keys[k] = false; mouseDown = false;
   $('menu').classList.add('hidden'); $('map-loading').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('hud').classList.remove('hidden');$('mobile-controls').classList.toggle('hidden',!touchDevice);
   if(state.gameMode==='duel'){
     if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),guestSpawn:duelGuestSpawn(P.pos),gameMode:'duel',difficulty:state.difficulty});
     if(pendingDuelState){applyDuelState(pendingDuelState);pendingDuelState=null;}
     banner('FIND YOUR RIVAL · FIRST TO 5 KILLS');
-  }else if(network.role==='guest'){state.wave=1;state.toSpawn=0;operations.start(1);if(pendingSnapshot){applyCoopSnapshot(pendingSnapshot);pendingSnapshot=null;}}
-  else{startWave(1);if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),gameMode:state.gameMode,difficulty:state.difficulty});}
+  }else if(network.role==='guest'){state.wave=1;state.toSpawn=0;if(state.gameMode==='hunt')operations.startHunt();else operations.start(1);if(pendingSnapshot){applyCoopSnapshot(pendingSnapshot);pendingSnapshot=null;}}
+  else{if(state.gameMode==='hunt')startHunt();else startWave(1);if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),gameMode:state.gameMode,difficulty:state.difficulty});}
   update(0);
   showPause();
   $('mouse-status').textContent=touchDevice?'Ready. Tap PLAY WITH TOUCH CONTROLS to begin.':'Ready. Click RESUME to capture the mouse and begin.';
@@ -1405,14 +1490,14 @@ function updateRemotePlayers(dt){
     avatar.root.visible=p.position.hp>0;avatar.root.position.lerp(new THREE.Vector3(...p.position.pos),1-Math.exp(-dt*14));avatar.root.rotation.y=angleLerp(avatar.root.rotation.y,p.position.yaw+Math.PI,Math.min(1,dt*14));avatar.update(dt,p.position.moving,p.position.speed||0,p.position.weapon||0,p.position.pitch||0);
   }
 }
-function updateGuestMonsters(dt){for(const m of state.monsters){m.flash=Math.max(0,m.flash-dt);m.group.position.lerp(new THREE.Vector3(m.x,m.y||0,m.z),1-Math.exp(-dt*14));m.group.rotation.y=angleLerp(m.group.rotation.y,m.netRotation||0,Math.min(1,dt*14));if(m.dead){m.deadT+=dt;m.group.rotation.x=-Math.min(1,m.deadT/.5)*Math.PI/2;}animateMonster(m,dt,(touchDevice||graphicsMode==='performance')&&Math.hypot(m.x-P.pos.x,m.z-P.pos.z)>(touchDevice?24:35));}}
-function coopSnapshot(){return {mapKey:state.mapKey,wave:state.wave,toSpawn:state.toSpawn,bossQueued:state.bossQueued,paused:state.paused,shop:state.shopOpen,won:state.mode==='over'&&P.won,
+function updateGuestMonsters(dt){for(const m of state.monsters){m.flash=Math.max(0,m.flash-dt);m.group.position.lerp(new THREE.Vector3(m.x,m.y||0,m.z),1-Math.exp(-dt*14));m.group.rotation.y=angleLerp(m.group.rotation.y,m.netRotation||0,Math.min(1,dt*14));if(m.dead){m.deadT+=dt;m.group.rotation.x=-Math.min(1,m.deadT/.5)*Math.PI/2;}const distance=Math.hypot(m.x-P.pos.x,m.z-P.pos.z);setMonsterDetail(m,distance,touchDevice||graphicsMode==='performance');animateMonster(m,dt,(touchDevice||graphicsMode==='performance')&&distance>(touchDevice?24:35));}}
+function coopSnapshot(){return {mapKey:state.mapKey,wave:state.wave,toSpawn:state.toSpawn,huntKilled:state.huntKilled||0,bossQueued:state.bossQueued,paused:state.paused,shop:state.shopOpen,won:state.mode==='over'&&P.won,
   monsters:state.monsters.map(m=>({id:m.id,type:m.type,x:m.x,y:m.y||0,z:m.z,hp:m.hp,maxhp:m.maxhp,rotation:m.group.rotation.y,dead:m.dead,moving:m.moving,flash:m.flash,shootAnim:m.shootAnim,windup:m.windup})),
   barrels:state.barrels.map(b=>({id:b.netId,x:b.x,y:b.y,z:b.z,hp:b.hp,alive:b.alive})),operation:operations.snapshot()};}
 function applyCoopSnapshot(s){
   if(network.role!=='guest')return;
   if(state.mode!=='playing'||s.mapKey!==state.mapKey){pendingSnapshot=s;return;}
-  state.wave=s.wave;state.toSpawn=s.toSpawn;state.bossQueued=s.bossQueued;state.hostPaused=s.paused;
+  state.wave=s.wave;state.toSpawn=s.toSpawn;state.huntKilled=s.huntKilled||0;state.bossQueued=s.bossQueued;state.hostPaused=s.paused;
   const ids=new Set(s.monsters.map(m=>m.id));
   for(const m of [...state.monsters])if(!ids.has(m.id)){m.group.removeFromParent();if(m.aim)m.aim.removeFromParent();state.monsters.splice(state.monsters.indexOf(m),1);}
   for(const data of s.monsters){if(!MONSTER_TYPES[data.type])continue;let m=state.monsters.find(m=>m.id===data.id);if(!m){m=spawnMonster(data.type,data.x,data.z);m.id=data.id;m.group.position.set(data.x,data.y,data.z);}
@@ -1471,13 +1556,21 @@ document.querySelectorAll('.graphicsbtn').forEach(b=>b.addEventListener('click',
 document.querySelectorAll('.scopebtn').forEach(b=>{b.classList.toggle('sel',(b.dataset.scope==='on')===scopeEffect);b.addEventListener('click',()=>{scopeEffect=b.dataset.scope==='on';localStorage.setItem('riftwatch-scope',scopeEffect?'on':'off');document.querySelectorAll('.scopebtn').forEach(x=>x.classList.toggle('sel',x===b));$('scope-overlay').classList.toggle('hidden',!scopeEffect||!isAiming()||state.paused);});});
 document.querySelectorAll('.povbtn').forEach(b=>b.addEventListener('click',()=>{state.cameraMode=b.dataset.pov;state.thirdPerson=state.cameraMode!=='first';document.querySelectorAll('.povbtn').forEach(x=>x.classList.toggle('sel',x===b));}));
 document.querySelectorAll('.difficultybtn').forEach(b=>b.addEventListener('click',()=>{state.difficulty=b.dataset.difficulty;document.querySelectorAll('.difficultybtn').forEach(x=>x.classList.toggle('sel',x===b));}));
-document.querySelectorAll('.modebtn').forEach(b => b.addEventListener('click', () => { state.gameMode = b.dataset.mode; document.querySelectorAll('.modebtn').forEach(x => x.classList.toggle('sel', x === b));document.querySelector('.lobby-heading').firstChild.textContent=state.gameMode==='duel'?'PRIVATE 1V1 ROOM ':'ONLINE CO-OP ';$('lobby-status').textContent=state.gameMode==='duel'?'Create a room, invite one friend, then choose a map. First to 5 kills wins.':'Play solo, or create a room and invite up to three friends.';network.render(); }));
+function updateModeMenu(){
+  document.querySelectorAll('.modebtn').forEach(button=>button.classList.toggle('sel',button.dataset.mode===state.gameMode));
+  document.querySelector('.lobby-heading').firstChild.textContent=state.gameMode==='duel'?'PRIVATE 1V1 ROOM ':state.gameMode==='hunt'?'ISLAND HUNT ROOM ':'ONLINE CO-OP ';
+  $('lobby-status').textContent=state.gameMode==='duel'?'Create a room, invite one friend, then choose a map. First to 5 kills wins.':state.gameMode==='hunt'?'Create a room and invite your friend. Hunt 30 monsters across the island.':'Play solo, or create a room and invite up to three friends.';
+  document.querySelectorAll('.mapbtn').forEach(button=>button.classList.toggle('hidden',(button.dataset.key==='island')!==(state.gameMode==='hunt')));
+  network.render();
+}
+document.querySelectorAll('.modebtn').forEach(b=>b.addEventListener('click',()=>{state.gameMode=b.dataset.mode;updateModeMenu();}));
 for (const [key, m] of Object.entries(MAPS).sort(([a],[b]) => (a === "outpost" ? -1 : b === "outpost" ? 1 : 0))) {
   const b = document.createElement('button'); b.className = 'mapbtn map-' + key; b.disabled = true; b.dataset.key = key;
-  b.innerHTML = `<span class="map-index">${String(Object.keys(MAPS).indexOf(key)+1).padStart(2,"0")} / ${m.open ? "OPEN WORLD" : "COMBAT ZONE"}</span><span class="map-art"></span><b>${m.name}</b><small>${m.desc}</small><span class="deploy">DEPLOY ↗</span>`;
+  b.innerHTML = `<span class="map-index">${String(Object.keys(MAPS).indexOf(key)+1).padStart(2,"0")} / ${m.open||m.island ? "OPEN WORLD" : "COMBAT ZONE"}</span><span class="map-art"></span><b>${m.name}</b><small>${m.desc}</small><span class="deploy">DEPLOY ↗</span>`;
   b.addEventListener('click', () => startGame(key));
   $('maps').appendChild(b);
 }
+updateModeMenu();
 let combatModelsPromise;
 function ensureCombatModels() {
   if (!combatModelsPromise) combatModelsPromise = loadAll().catch(error => {

@@ -11,7 +11,7 @@ import {loadMonsterModels,buildMonster,animateMonster,MONSTER_TYPES} from '../pu
 async function asset(name){const delivery='models/web/'+name;const file=process.env.RIFTWATCH_WEB_MODELS==='1'&&await fs.access(delivery).then(()=>true,()=>false)?delivery:'models/'+name;const bytes=await fs.readFile(file),loader=new GLTFLoader();loader.register(()=>({name:'GeometryOnlyTest',loadTexture:()=>Promise.resolve(new THREE.Texture())}));return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');}
 const soldier=await asset('futuristic_soldier_free.glb');
 const extra=JSON.parse(await fs.readFile('public/extra-hero.json','utf8'));
-for(const hero of [...HEROES,...(extra.enabled?[extra]:[])])test(hero.name+' walks, runs, stops and keeps boot soles on the ground',async()=>{
+for(const hero of [...HEROES,...(extra.enabled?[extra]:[])])test((hero.role||hero.name)+' walks, runs, stops and keeps boot soles on the ground',async()=>{
   const template=await asset(hero.file);if(hero.file==='figure_360.glb')template.scene=rigFigure(template.scene);const clips=await heroMotionClips(hero.file,template.scene,soldier);
   assert(clips.walk?.tracks.length>=6,'retargeted walking leg tracks exist');assert(clips.run?.tracks.length>=6);
   const model=clone(template.scene),discard=[];model.traverse(o=>{if(o.isMesh&&/floor/i.test(o.name))discard.push(o);});discard.forEach(o=>o.removeFromParent());
