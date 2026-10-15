@@ -163,7 +163,7 @@ async function initOperatorPreview(stage, operator) {
     const key = new THREE.DirectionalLight(0xc6f5ff,2.5);key.position.set(-3,4,5);scene.add(key);
     const rim = new THREE.DirectionalLight(0x41daef,3.0);rim.position.set(3,3,-3);scene.add(rim);
     const camera = new THREE.PerspectiveCamera(31,width()/height(),.1,60);
-    camera.position.set(0,1.14,5.8);
+    camera.position.set(0,1.14,3.65);
     camera.lookAt(0,1.05,0);
     avatar = await buildHero(operator.id,{preview:true});
     if (!stage.isConnected) { renderer.dispose();return; }
