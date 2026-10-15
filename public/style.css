@@ -284,3 +284,17 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
   .modebtn{flex:1 1 100px}.play-options button{padding:6px 6px;font-size:8px}.lobby-controls input{width:100%}
   .mapbtn{min-height:80px}.mapbtn b{margin-top:12px}
 }
+
+/* Menu polish: soft fade-in, clearer selected state, easier-to-read small text. */
+@keyframes menu-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#menu .menu-brand,#menu .deployment-label,#menu #modes,#menu .play-options,#menu #lobby,#menu #maps{animation:menu-in .4s ease-out both}
+#menu #modes{animation-delay:.06s}#menu .play-options{animation-delay:.12s}#menu #lobby{animation-delay:.18s}#menu #maps{animation-delay:.24s}
+.modebtn{transition:background .15s,box-shadow .15s,border-color .15s}
+.modebtn.sel{box-shadow:0 0 0 1px var(--mint),0 0 18px #a4ffe160}
+.play-options button.sel{box-shadow:0 0 10px #a4ffe150}
+.mapbtn{transition:background .15s,border-color .15s,transform .15s}
+.mapbtn:active:not(:disabled){transform:scale(.985)}
+.mapbtn:focus-visible{border-color:var(--mint);box-shadow:0 0 14px #a4ffe150}
+.mapbtn small{color:#b6caca}.play-options>span{color:#a9ccc2}.hero-link span{color:#a1bab8}#lobby p{color:#c3dcd1}#menu .keys{color:#aabfc1}.deployment-label span{color:#9eb6b8}
+@media(max-width:900px) and (orientation:portrait){.modebtn small{font-size:10px}.play-options button{font-size:10px}.mapbtn small{font-size:11px}#menu .keys{font-size:10px}}
+@media(prefers-reduced-motion:reduce){#menu *{animation:none!important;transition:none!important}}
