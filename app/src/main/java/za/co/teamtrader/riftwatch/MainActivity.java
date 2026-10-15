@@ -37,6 +37,9 @@ public final class MainActivity extends Activity {
         gameView = new WebView(this);
         gameView.getSettings().setJavaScriptEnabled(true);
         gameView.getSettings().setDomStorageEnabled(true);
+        gameView.getSettings().setUseWideViewPort(true);
+        gameView.getSettings().setLoadWithOverviewMode(true);
+        gameView.getSettings().setTextZoom(100);
         gameView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         gameView.setWebViewClient(new WebViewClient() {
             @Override

@@ -226,3 +226,40 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
   #pause{padding:10px}#pause h2{font-size:26px}#pause .keys{font-size:10px;margin:2px}#pause button{font-size:12px;padding:8px 12px}
 }
 @media(pointer:coarse) and (orientation:portrait), (max-width:600px) and (orientation:portrait){#maps{grid-template-columns:1fr}.mapbtn{min-height:120px}.mapbtn b{margin-top:32px}#touch-stick{width:102px;height:102px;bottom:38px}#touch-stick::after{left:30px}.touch-run{left:137px;bottom:28px}.touch-c4{right:180px;bottom:25px}.touch-pov{right:176px;bottom:83px}.touch-use{right:120px;bottom:81px}.touch-swap{right:125px;bottom:23px}.touch-jump{right:75px;bottom:150px}.touch-aim{right:18px;bottom:158px}.touch-reload{right:84px;bottom:84px}#top{display:none}#radar{right:50px}}
+
+/* Phone menus must fit the visible viewport and leave every action reachable. */
+@media(max-width:900px), (max-height:540px){
+  #menu{box-sizing:border-box;width:100%;height:100dvh;max-height:100dvh;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:calc(12px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+  #menu h1,.menu-brand h1{font-size:clamp(30px,7vw,46px)!important;letter-spacing:-2px!important;margin:7px 0}
+  #menu h1 i{font-size:9px;padding:4px;margin-left:5px}
+  #menu .brief{font-size:11px;margin:4px 0 10px}
+  #loadtxt{margin:7px 0 12px;font-size:9px}
+  .hero-link{margin:0 0 13px;font-size:10px}.hero-link span{display:block;margin:3px 0 0}
+  .deployment-label{padding-top:10px;font-size:10px}
+  #modes{flex-wrap:wrap;margin-top:8px;gap:6px}
+  .modebtn{flex:1 1 125px;min-width:0;justify-content:center;flex-direction:column;gap:2px;padding:7px;font-size:10px}
+  .modebtn small{font-size:9px;text-align:center}
+  .play-options{gap:5px;margin-top:9px}.play-options>span{margin:0 3px}.play-options button{padding:7px 8px;font-size:9px}
+  #lobby{padding:9px;margin-top:10px}.lobby-heading{margin-bottom:6px}.lobby-controls{gap:6px}.lobby-controls input{width:min(145px,42vw);padding:8px}.lobby-controls button{padding:8px}
+  #maps{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:12px 0}.mapbtn{min-width:0;min-height:108px;padding:9px}.mapbtn b{margin-top:24px;font-size:15px}.mapbtn small{font-size:10px}
+  #menu .keys{font-size:9px;line-height:1.4}
+  #shop,#over,#pause{box-sizing:border-box;width:100%;height:100dvh;padding:calc(10px + env(safe-area-inset-top)) 14px calc(10px + env(safe-area-inset-bottom));overflow:auto;overscroll-behavior:contain;justify-content:flex-start;gap:8px}
+  #shop h2,#over h1,#pause h2{font-size:clamp(22px,5vw,30px);line-height:1.1}
+  #shopcr{font-size:19px}
+  #shopgrid{width:min(100%,740px);min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow-y:auto;flex:1 1 auto}
+  #shopgrid .card{min-height:0;padding:8px;font-size:10px}#shopgrid .card b{font-size:11px;margin-bottom:2px}
+  #shopnext{flex:0 0 auto;position:sticky;bottom:0;z-index:1;min-height:42px;padding:8px 22px}
+  #overstats{margin:4px 0;font-size:12px;line-height:1.5}
+  #over button,#pause button{min-height:42px;padding:8px 18px;font-size:12px}
+  #map-loading{overflow-y:auto}
+}
+@media(max-width:480px){#maps{grid-template-columns:1fr}.mapbtn{min-height:92px}.mapbtn b{margin-top:17px}#shopgrid .card{font-size:9px}}
+@media(max-height:390px) and (pointer:coarse){
+  #touch-stick{width:86px;height:86px}#touch-stick-knob{width:42px;height:42px}
+  .touch-btn{width:40px;height:40px;font-size:7px}.touch-btn span{font-size:7px}
+  .touch-fire{width:64px;height:64px}.touch-fire span{font-size:8px}.touch-pause{width:32px;height:32px}
+  #radar{width:76px;right:52px}#mini{width:76px;height:76px}
+  #objective{width:150px;top:39px;padding:4px 6px}#objective h3{font-size:9px}
+  #ammobox{left:145px;padding:3px 7px}#ammo{font-size:15px}
+  #banner{font-size:16px;top:22%}
+}
