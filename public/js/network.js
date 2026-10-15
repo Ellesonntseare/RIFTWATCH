@@ -61,7 +61,7 @@ export function createNetwork(callbacks){
   $('player-name').value=selectedHero().name;
   $('player-name').readOnly=true;
   $('player-name').title='Change your name in the Operators panel';
-  window.addEventListener('riftwatch:profile-changed',()=>{
+  if(typeof window !== 'undefined')window.addEventListener('riftwatch:profile-changed',()=>{
     const profile=selectedHero();
     $('player-name').value=profile.name || 'Operator';
     if(code)send('profile',{hero:profile.id,name:profile.name || 'Operator'});
