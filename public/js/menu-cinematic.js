@@ -124,7 +124,7 @@ function initializeCinematicMenu() {
     $('rw-dialog-heading').textContent = which === 'squad' ? 'SQUAD / MULTIPLAYER' : which === 'options' ? 'FIELD OPTIONS' : 'SELECT YOUR BATTLEFIELD';
     dialog.classList.remove('hidden');
     menu.classList.add('rw-dialog-active');
-    dialog.querySelector('[data-rw-close]').focus();
+    dialog.querySelector('.rw-dialog-close').focus();
     if (which === 'maps') syncMode();
   }
   menu.addEventListener('click', event => {
@@ -181,7 +181,8 @@ async function initOperatorPreview(stage, operator) {
     function animate(now) {
       if (!stage.isConnected) { observer.disconnect(); renderer.dispose();return; }
       frameId = requestAnimationFrame(animate);
-      if (document.hidden || menuHidden() || now-lastRender < 1000/24) return;
+      if (menuHidden()) { observer.disconnect(); renderer.dispose(); return; }
+      if (document.hidden || now-lastRender < 1000/24) return;
       const dt = Math.min(.05,(now-last || 0)/1000);last=now;lastRender=now;
       avatar.update(dt,false,0);
       avatar.root.rotation.y = -.23 + Math.sin(now*.00028)*.045;
