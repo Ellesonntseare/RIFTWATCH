@@ -40,8 +40,10 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angleLerp = (a, b, t) => a + ((((b - a + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI) * t;
 
 // ------------------------------------------------------------------ renderer / scenes
+// Performance-mode render scale. Phones get a slightly higher scale (sharper models); the adaptive scaler below still lowers it on slow frames.
+const PERF_SCALE = touchDevice ? 1.15 : 1;
 const renderer = new THREE.WebGLRenderer({ antialias: !touchDevice });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1));
+renderer.setPixelRatio(Math.min(devicePixelRatio, PERF_SCALE));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1233,9 +1235,9 @@ function update(dt) {
   updateFx(dt); updateParticles(dt); updateFloaters(dt); updateProjs(dt); updateRings(dt); updateTracers(dt); updateGun(dt); updateHUD(dt);
 }
 // Lower resolution only after sustained slow frames; avoid reacting to loading stalls.
-let graphicsMode='performance',renderScale=Math.min(devicePixelRatio,1),frameSamples=0,frameTotal=0;
+let graphicsMode='performance',renderScale=Math.min(devicePixelRatio,PERF_SCALE),frameSamples=0,frameTotal=0;
 function setGraphics(mode){
-  graphicsMode=mode;renderScale=Math.min(devicePixelRatio,mode==='quality'?(touchDevice ? 1.35 : 1.5):1);
+  graphicsMode=mode;renderScale=Math.min(devicePixelRatio,mode==='quality'?(touchDevice ? 1.35 : 1.5):PERF_SCALE);
   renderer.setPixelRatio(renderScale);renderer.shadowMap.enabled=mode==='quality'&&!touchDevice;setBlobShadows(!(mode==='quality'&&!touchDevice));
   if(!touchDevice&&mode==='quality'){scene.add(shotLight);if(muzzleLight)gunPivot.add(muzzleLight);}
   else{shotLight.removeFromParent();muzzleLight?.removeFromParent();}
@@ -1254,7 +1256,7 @@ function frame(now) {
     frameTotal+=elapsed;frameSamples++;
     if(frameSamples>=120){
       const average=frameTotal/frameSamples;
-      const target=Math.min(devicePixelRatio,1);
+      const target=Math.min(devicePixelRatio,PERF_SCALE);
       if(average>(touchDevice ? 1/25 : 1/45)&&renderScale>(touchDevice ? .75 : .65)){renderScale=Math.max(touchDevice ? .75 : .65,renderScale-.1);renderer.setPixelRatio(renderScale);}
       else if(average<(touchDevice ? 1/29 : 1/55)&&renderScale<target){renderScale=Math.min(target,renderScale+.05);renderer.setPixelRatio(renderScale);}
       frameTotal=frameSamples=0;
