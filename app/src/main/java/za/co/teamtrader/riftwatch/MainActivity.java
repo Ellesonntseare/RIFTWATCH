@@ -5,13 +5,19 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.net.Uri;
 import android.view.View;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class MainActivity extends Activity {
     private static final String GAME_URL = "https://rift.teamtrader.co.za/hero.html";
@@ -33,6 +39,27 @@ public final class MainActivity extends Activity {
         gameView.getSettings().setDomStorageEnabled(true);
         gameView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         gameView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                String path = uri.getPath();
+                if (!"https".equals(uri.getScheme()) ||
+                    !"rift.teamtrader.co.za".equals(uri.getHost()) ||
+                    path == null || !path.startsWith("/models/")) return null;
+                String name = uri.getLastPathSegment();
+                if (name == null || !name.endsWith(".glb") || name.contains("/") || name.contains("..")) return null;
+                try {
+                    InputStream asset = getAssets().open("models/" + name);
+                    Map<String, String> headers = new HashMap<>();
+                    headers.put("Content-Length", String.valueOf(asset.available()));
+                    headers.put("X-Asset-Size", String.valueOf(asset.available()));
+                    headers.put("Cache-Control", "public, max-age=86400");
+                    return new WebResourceResponse("model/gltf-binary", null, 200, "OK", headers, asset);
+                } catch (IOException missingAsset) {
+                    return null;
+                }
+            }
+
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (!request.isForMainFrame()) return;

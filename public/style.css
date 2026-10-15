@@ -196,15 +196,21 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 #mobile-controls{position:fixed;inset:0;z-index:9;pointer-events:none;touch-action:none}
 #mobile-controls:not(.hidden){display:none}
 .mobile-playing #mobile-controls:not(.hidden){display:block}
+.touch-icon-defs{position:absolute;width:0;height:0;overflow:hidden}
 #touch-look{position:absolute;top:15%;right:0;width:58%;height:82%;pointer-events:auto;touch-action:none;z-index:1}
-#touch-stick{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(28px,env(safe-area-inset-bottom));width:116px;height:116px;border:2px solid #b8e9db99;border-radius:50%;background:#0b2c36a8;pointer-events:auto;touch-action:none;z-index:2}
+#touch-stick{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(28px,env(safe-area-inset-bottom));width:116px;height:116px;border:2px solid #b8e9db99;border-radius:50%;background:#0b2c36a8;pointer-events:auto;touch-action:none;z-index:2;opacity:var(--touch-opacity,.9)}
 #touch-stick::after{content:'MOVE';position:absolute;top:-23px;left:37px;color:#c5e6db;font:10px Consolas,monospace;letter-spacing:1px}
 #touch-stick-knob{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;border:2px solid #a4ffe1;background:#2c6967df;transform:translate(-50%,-50%);box-shadow:0 0 18px #a4ffe15a}
-.touch-btn{position:absolute;z-index:3;display:grid;place-items:center;padding:0;width:48px;height:48px;border-radius:50%;border:1px solid #b9ecdbb9;background:#123a44dd;color:#ecfff7;font:bold 10px Consolas,monospace;letter-spacing:.2px;pointer-events:auto;touch-action:none;text-shadow:0 1px 3px #000;box-shadow:0 4px 14px #0008}
-.touch-btn.touch-use{font-size:9px;border-color:#b5f7d5}
+.touch-btn{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;width:48px;height:48px;border-radius:50%;border:1px solid #b9ecdbb9;background:#123a44dd;color:#ecfff7;font:bold 8px Consolas,monospace;letter-spacing:.2px;pointer-events:auto;touch-action:none;text-shadow:0 1px 3px #000;box-shadow:0 4px 14px #0008;opacity:var(--touch-opacity,.9)}
+.touch-btn svg{display:block;width:46%;height:46%;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.touch-btn span{font-size:8px;line-height:1}
+.touch-btn.touch-use{border-color:#b5f7d5}
 .touch-btn.pressed{background:#8be9c6;color:#08252b;transform:scale(.95)}
-.touch-fire{width:78px;height:78px;right:max(22px,env(safe-area-inset-right));bottom:max(28px,env(safe-area-inset-bottom));background:#954b44e8;border-color:#ffb5a3;font-size:13px}
+.touch-fire{width:78px;height:78px;right:max(22px,env(safe-area-inset-right));bottom:max(28px,env(safe-area-inset-bottom));background:#954b44e8;border-color:#ffb5a3}.touch-fire svg{width:50%;height:50%}.touch-fire span{font-size:10px}
 .touch-aim{right:max(31px,env(safe-area-inset-right));bottom:120px}.touch-jump{right:108px;bottom:123px}.touch-run{left:160px;bottom:26px}.touch-reload{right:110px;bottom:34px}.touch-swap{right:170px;bottom:29px}.touch-use{right:172px;bottom:91px}.touch-c4{right:232px;bottom:30px}.touch-pov{right:228px;bottom:91px}.touch-pause{right:max(12px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:38px;height:38px;font-size:20px}
+.hud-editing #mobile-controls{z-index:12}.hud-editing #touch-look{pointer-events:none}.hud-editing #touch-stick,.hud-editing .touch-btn{outline:2px dashed #b6ffdf;outline-offset:3px;cursor:grab}.hud-editing #touch-stick.selected,.hud-editing .touch-btn.selected{outline:3px solid #fff46d}.hud-editing .touch-btn.pressed{transform:none}
+#hud-editor{position:fixed;top:max(5px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:13;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;max-width:calc(100vw - 16px);padding:7px 9px;background:#061c26ef;border:1px solid #a4ffe1;color:#dffcef;font:10px Consolas,monospace;pointer-events:auto;touch-action:manipulation}
+#hud-editor strong{color:#a4ffe1;white-space:nowrap}#hud-editor span{max-width:140px}#hud-editor label{display:flex;align-items:center;gap:4px;white-space:nowrap}#hud-editor input{width:72px;accent-color:#a4ffe1}#hud-editor button{padding:7px 8px;background:#154048;border:1px solid #8bd9ba;color:#eafff5;font:bold 9px Consolas,monospace}#hud-save{background:#27735c!important}
 @media(pointer:coarse), (max-width:900px){
   #menu{padding:20px 4vw}.menu-brand .intro{display:none}.menu-brand h1{font-size:46px!important;letter-spacing:-2px!important}
   #maps{grid-template-columns:repeat(2,minmax(0,1fr))}.mapbtn{min-height:140px}.mapbtn b{margin-top:53px}

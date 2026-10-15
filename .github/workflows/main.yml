@@ -13,6 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch optimized game models
+        run: |
+          git lfs pull --include="models/web/*.glb,models/figure_360.glb,models/serame-head.glb" --exclude=""
+          mkdir -p app/src/main/assets/models
+          cp models/web/*.glb app/src/main/assets/models/
+          cp models/figure_360.glb models/serame-head.glb app/src/main/assets/models/
+          for model in app/src/main/assets/models/*.glb; do
+            test "$(head -c 4 "$model")" = "glTF" || { echo "Missing LFS model: $model"; exit 1; }
+          done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

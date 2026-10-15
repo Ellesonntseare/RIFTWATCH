@@ -23,7 +23,7 @@ const server = http.createServer((req, res) => {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); return res.end('Not found'); }
     const etag='"'+st.size.toString(16)+'-'+Math.trunc(st.mtimeMs).toString(16)+'"';
-    res.setHeader('Cache-Control','no-cache');
+    res.setHeader('Cache-Control',prefix==='/models/'?'public, max-age=86400':'no-cache');
     res.setHeader('ETag',etag);
     if(encoding)res.setHeader('Content-Encoding',encoding);
     if(prefix==='/models/' && (encoding || path.extname(file)==='.glb')) res.setHeader('X-Asset-Size',encoding?fs.statSync(file.slice(0,-3)).size:st.size);

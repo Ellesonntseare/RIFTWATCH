@@ -9,4 +9,5 @@ tests/server-error.log
 .gradle/
 build/
 app/build/
+app/src/main/assets/models/
 local.properties

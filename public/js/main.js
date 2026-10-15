@@ -12,6 +12,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MAPS } from './maps.js';
 import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels } from './monsters.js';
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
+import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
 
 let BVH = null;   // makes raycasts on million-triangle maps fast
 try { BVH = await import('three-mesh-bvh'); THREE.Mesh.prototype.raycast = BVH.acceleratedRaycast; } catch (e) { console.warn('three-mesh-bvh unavailable - big maps will be slow', e); }
@@ -114,7 +115,11 @@ async function loadAll() {
   const loader = new GLTFLoader();
   const list = [['gun', '/models/low-poly_colt_m4a1.glb'], ['laser', '/models/chg_laser_machine_gun.glb'], ['barrel', '/models/explosive_barrel.glb'], ['c4', '/models/chg_c4.glb']];
   let done = 0; const total = list.length + 5;
-  const step = () => { $('loadtxt').textContent = `Loading models ${++done}/${total}`; };
+  const step = () => {
+    const message = `Loading combat assets ${++done}/${total} · ${total-done} left`;
+    $('loadtxt').textContent = message;
+    if (state.mode === 'loading') $('loading-status').textContent = message;
+  };
   await Promise.all([
     ...list.map(async ([k, url]) => { try { models[k] = (await loader.loadAsync(url)).scene; } catch (e) { console.warn('model failed', url, e); } step(); }),
     loadMonsterModels(loader, step, BVH),
@@ -317,7 +322,7 @@ const tick = () => new Promise(r => setTimeout(r, 30));
 function loadingStage(stage, message) {
   $('loading-status').textContent = message;
   $('loadtxt').textContent = message;
-  const order = ['download','decode','collision','prepare'];
+  const order = ['models','download','decode','collision','prepare'];
   const active = order.indexOf(stage);
   document.querySelectorAll('.loading-stages li').forEach((item, i) => {
     item.classList.toggle('active', i === active);
@@ -329,7 +334,7 @@ function showMapLoading(key, map) {
   $('loading-map-desc').textContent = map.desc;
   $('loading-sector-art').className = `map-art map-${key}`;
   $('map-download-progress').hidden = true;
-  loadingStage(map.open ? 'download' : 'prepare', map.open ? `Connecting to ${map.name}…` : 'Preparing arena…');
+  loadingStage('models','Loading combat assets 0/9…');
   $('map-loading').classList.remove('hidden');
 }
 async function loadOpenWorld(map) {
@@ -1210,17 +1215,30 @@ async function startGame(key,setup=null) {
   if(state.gameMode==='duel'&&!setup&&(network.role!=='host'||network.players.size!==2)){$('loadtxt').textContent='1V1 needs a room with exactly two players. Create a room, invite a friend, then choose a map.';return;}
   initAudio();
   state.mode='loading'; state.paused=true; document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=true);
-  state.mapKey = key; loadMap(key); releaseUnusedMaps(key); showMapLoading(key,state.map); await tick();
+  state.mapKey = key; showMapLoading(key,MAPS[key]); await tick();
+  try { await ensureCombatModels(); }
+  catch (error) {
+    $('map-loading').classList.add('hidden');
+    $('loadtxt').textContent = 'Combat assets failed to load: ' + error.message;
+    console.error(error);
+    state.mode = 'menu';
+    document.querySelectorAll('.mapbtn').forEach(button => { button.disabled = false; });
+    network.render();
+    return;
+  }
+  loadMap(key); releaseUnusedMaps(key);
+  loadingStage(state.map.open ? 'download' : 'collision', state.map.open ? `Connecting to ${state.map.name}…` : 'Preparing arena…');
   if (state.map.open) {
     document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = true; }); $('menu').classList.remove('hidden'); $('over').classList.add('hidden');
     try { await loadOpenWorld(state.map); } catch (e) { $('map-loading').classList.add('hidden'); $('loadtxt').textContent = 'Map failed to load: ' + e.message; console.error(e); state.mode='menu';state.paused=false;network.render(); return; }
     $('loadtxt').textContent = 'SYSTEM READY / SELECT YOUR DEPLOYMENT'; document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = false; });
   }
   if(setup){state.map.start=[setup.spawn[0],setup.spawn[2]];state.map.startY=setup.spawn[1];}
-  $('menu').classList.remove('hidden'); loadingStage('prepare','Preparing field architecture and collision…');
+  $('menu').classList.remove('hidden'); loadingStage('collision','Preparing field architecture and collision…');
   await tick();
   try { await dressMap(state,floorAt,buildCollision); }
   catch(e) { console.warn('Map dressing failed',e); }
+  loadingStage('prepare','Preparing your operator…');
   try { playerAvatar=await buildHero();state.world.add(playerAvatar.root);playerAvatar.root.visible=false; }
   catch(e) { console.warn('Hero model unavailable',e); }
   document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=false);
@@ -1268,9 +1286,10 @@ $('tomenu').addEventListener('click', () => location.reload());
 $('back-maps').addEventListener('click',e=>{e.stopPropagation();location.href='/?deploy=1';});
 
 const stick=$('touch-stick'),knob=$('touch-stick-knob'),look=$('touch-look');
+initTouchHud(touchDevice);
 let stickPointer=null,lookPointer=null,lookX=0,lookY=0;
 function resetStick(){stickPointer=null;touchMove.x=touchMove.y=0;knob.style.transform='translate(-50%,-50%)';}
-stick.addEventListener('pointerdown',e=>{if(!touchDevice||state.paused||stickPointer!==null)return;e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);});
+stick.addEventListener('pointerdown',e=>{if(document.body.classList.contains('hud-editing')||!touchDevice||state.paused||stickPointer!==null)return;e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);});
 stick.addEventListener('pointermove',e=>{if(e.pointerId!==stickPointer)return;const r=stick.getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,length=Math.max(1,Math.hypot(dx,dy)),reach=Math.min(1,length/(r.width*.36));touchMove.x=dx/length*reach;touchMove.y=dy/length*reach;knob.style.transform=`translate(calc(-50% + ${touchMove.x*38}px),calc(-50% + ${touchMove.y*38}px))`;});
 for(const event of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(event,e=>{if(e.pointerId===stickPointer)resetStick();});
 look.addEventListener('pointerdown',e=>{if(!touchDevice||state.paused||lookPointer!==null)return;e.preventDefault();lookPointer=e.pointerId;lookX=e.clientX;lookY=e.clientY;look.setPointerCapture(e.pointerId);});
@@ -1290,7 +1309,7 @@ function touchAction(action,down){
 }
 document.querySelectorAll('[data-touch]').forEach(button=>{
   let owner=null;
-  button.addEventListener('pointerdown',e=>{if(!touchDevice||state.paused||owner!==null)return;e.preventDefault();e.stopPropagation();owner=e.pointerId;button.setPointerCapture(owner);button.classList.add('pressed');touchAction(button.dataset.touch,true);});
+  button.addEventListener('pointerdown',e=>{if(document.body.classList.contains('hud-editing')||!touchDevice||state.paused||owner!==null)return;e.preventDefault();e.stopPropagation();owner=e.pointerId;button.setPointerCapture(owner);button.classList.add('pressed');touchAction(button.dataset.touch,true);});
   for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,e=>{if(e.pointerId!==owner)return;owner=null;button.classList.remove('pressed');touchAction(button.dataset.touch,false);});
 });
 
@@ -1422,7 +1441,7 @@ function coopAction(id,a){
 }
 const network=createNetwork({
   mode:()=>state.gameMode,
-  canSelectMap:()=>!!state.modelsReady&&state.mode!=='loading',
+  canSelectMap:()=>state.mode!=='loading',
   onRoom:({role})=>{state.coop=role;},
   onStart:setup=>{pendingSnapshot=null;state.hostPaused=false;state.sharedBarrelsInitialized=false;state.lastSharedShop=0;startGame(setup.mapKey,setup);},
   onSnapshot:applyCoopSnapshot,
@@ -1457,9 +1476,15 @@ for (const [key, m] of Object.entries(MAPS).sort(([a],[b]) => (a === "outpost" ?
   b.addEventListener('click', () => startGame(key));
   $('maps').appendChild(b);
 }
-loadAll().then(() => {
-  state.modelsReady=true;
-  $('loadtxt').textContent = 'SYSTEM READY / SELECT YOUR DEPLOYMENT';
-  document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = false; });network.render();
-}).catch(e => { $('loadtxt').textContent = 'Load error: ' + e.message; console.error(e); });
+let combatModelsPromise;
+function ensureCombatModels() {
+  if (!combatModelsPromise) combatModelsPromise = loadAll().catch(error => {
+    combatModelsPromise = null;
+    throw error;
+  });
+  return combatModelsPromise;
+}
+$('loadtxt').textContent = 'SYSTEM READY / SELECT YOUR DEPLOYMENT';
+document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = false; });
+network.render();
 requestAnimationFrame(frame);
