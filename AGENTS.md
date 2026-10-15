@@ -10,6 +10,7 @@ Improve **frame rate and smoothness while a match is running**, especially in th
 - Keep the phone menus and post-match controls usable at portrait and landscape sizes. The touch HUD is for phones, not desktop.
 - Do not delete maps, models, effects, or gameplay systems as a shortcut to improve FPS. Prefer measured, reversible changes.
 - Work in this repository and review the current code before changing settings. Run `npm test` after code changes and test an actual match, including the Android APK if available.
+- Make one small optimization at a time. After it passes tests and an in-match check, create a separate Git commit for that working change before starting the next one. If FPS, visuals, or gameplay get worse, revert the specific commit instead of layering on more changes.
 
 ## Where frame rate is controlled now
 
