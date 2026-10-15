@@ -10,7 +10,7 @@ import { createNetwork } from './network.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MAPS } from './maps.js';
-import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMonsterDetail } from './monsters.js';
+import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMonsterDetail, setBlobShadows } from './monsters.js';
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
 import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
 import { installMenuClicks } from './ui-clicks.js?v=20261015-menu-audio';
@@ -676,6 +676,7 @@ function updateMonsters(dt) {
     const player=closestPlayer(m);m.target=player;
     m.flash -= dt;
     if (m.dead) {
+      const deadBlob=m.group.userData.rig?.blob;if(deadBlob)deadBlob.visible=false;
       setMonsterDetail(m,Math.hypot(m.x-P.pos.x,m.z-P.pos.z),touchDevice||graphicsMode==='performance');
       m.deadT += dt;
       m.group.rotation.x = -Math.min(1, m.deadT / 0.5) * Math.PI / 2;
@@ -1235,7 +1236,7 @@ function update(dt) {
 let graphicsMode='performance',renderScale=Math.min(devicePixelRatio,1),frameSamples=0,frameTotal=0;
 function setGraphics(mode){
   graphicsMode=mode;renderScale=Math.min(devicePixelRatio,mode==='quality'?(touchDevice ? 1.35 : 1.5):1);
-  renderer.setPixelRatio(renderScale);renderer.shadowMap.enabled=mode==='quality'&&!touchDevice;
+  renderer.setPixelRatio(renderScale);renderer.shadowMap.enabled=mode==='quality'&&!touchDevice;setBlobShadows(!(mode==='quality'&&!touchDevice));
   if(!touchDevice&&mode==='quality'){scene.add(shotLight);if(muzzleLight)gunPivot.add(muzzleLight);}
   else{shotLight.removeFromParent();muzzleLight?.removeFromParent();}
   scene.traverse(o=>{if(o.isMesh)for(const m of (Array.isArray(o.material)?o.material:[o.material]))m.needsUpdate=true;});
