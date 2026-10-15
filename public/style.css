@@ -309,3 +309,11 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
   #ammo{font-size:22px}#wname{font-size:10px}#c4txt{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){#hpbox.low{animation:none}}
+
+/* Hit feedback: marker pops in with a glow; kills are larger and red. */
+@keyframes hit-pop{from{transform:rotate(45deg) scale(1.7)}to{transform:rotate(45deg) scale(1)}}
+#hit{box-shadow:0 0 8px #ffffffaa}
+#hit.on{animation:hit-pop .14s ease-out}
+#hit.kill{width:34px;height:34px;margin:-17px 0 0 -17px;border-width:3px;box-shadow:0 0 16px #ff3b30}
+#hit.head.kill{width:44px;height:44px;margin:-22px 0 0 -22px;box-shadow:0 0 18px #ff3b30,0 0 8px #ffd34d}
+@media(prefers-reduced-motion:reduce){#hit.on{animation:none}}

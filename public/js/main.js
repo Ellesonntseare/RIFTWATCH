@@ -1213,7 +1213,7 @@ function updateHUD(dt) {
   $('compass').textContent = ['N','NE','E','SE','S','SW','W','NW'][Math.round((( -P.yaw * 180 / Math.PI) % 360 + 360) % 360 / 45) % 8] + ' / ' + state.map.name.toUpperCase();
   }
   $('hurt').style.opacity = clamp(state.hurt + (P.hp < 30 && !P.dead ? 0.25 : 0), 0, 1);
-  $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);
+  $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('on', state.hitT > 0); $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);
   state.bannerT -= dt; if (state.bannerT <= 0) $('banner').style.opacity = 0;
 }
 
