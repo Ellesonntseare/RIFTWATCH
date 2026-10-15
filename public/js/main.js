@@ -6,7 +6,7 @@ import { createOperations } from './operations.js';
 import { dressMap } from './scenery.js';
 import { buildHero } from './hero.js';
 import { selectedHero } from './roster.js';
-import { createNetwork } from './network.js';
+import { createNetwork } from './network.js?v=20261015-voice-indicators';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MAPS } from './maps.js';

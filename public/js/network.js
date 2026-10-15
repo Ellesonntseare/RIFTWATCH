@@ -1,5 +1,5 @@
 import {selectedHero} from './roster.js';
-import {createRoomVoice} from './voice.js';
+import {createRoomVoice} from './voice.js?v=20261015-voice-indicators';
 
 export function createNetwork(callbacks){
   let socket=null,id=null,role=null,code=null,lastPosition=0,lastState=0;

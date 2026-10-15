@@ -232,6 +232,15 @@
 #menu.rw-menu .rw-voice-actions {display:flex;gap:8px;flex-wrap:wrap}
 #menu.rw-menu .rw-voice-actions button {min-height:40px;padding:9px 15px;font:11px Consolas,monospace;border:1px solid #6aa9bc;background:#11384b;color:#e6fcff}
 #menu.rw-menu .rw-voice-actions button:disabled {opacity:.45;cursor:not-allowed}
+#menu.rw-menu .rw-voice-peers {display:flex;flex:1 0 100%;flex-wrap:wrap;gap:7px;min-height:0}
+.voice-peer {display:inline-flex;align-items:center;gap:7px;padding:5px 8px;border:1px solid #436b79;border-radius:5px;background:#0b2936;color:#d8edf3;font:10px Consolas,monospace}
+.voice-peer b {font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice-peer small {font:9px Consolas,monospace;color:#94adb6}
+.voice-peer.voice-connected,.voice-peer.voice-mic-on {border-color:#57aa9e}.voice-peer.voice-connected small,.voice-peer.voice-mic-on small {color:#93e9c5}
+.voice-peer.voice-speaking {border-color:#8af4c5;background:#17493e;box-shadow:0 0 12px #74f0b14d}.voice-peer.voice-speaking small {color:#bcffe0}
+.voice-peer.voice-failed small {color:#ffaaa0}.voice-peer.voice-muted small {color:#f1cf93}
+#voice-roster {display:none;position:fixed;top:calc(68px + env(safe-area-inset-top,0px));left:12px;z-index:15;max-width:min(72vw,340px);flex-wrap:wrap;gap:5px;pointer-events:none}
+body.rw-game-visible.rw-room-joined #voice-roster:not(:empty) {display:flex}
 #menu.rw-menu .rw-music-label {display:flex;align-items:center;justify-content:space-between;max-width:370px;margin:20px 0 8px}
 #menu.rw-menu #rw-music-range {width:min(100%,370px);min-height:32px;accent-color:#86eff4;display:block}
 body.rw-menu-visible #voice-controls,body.rw-menu-visible #music-controls {display:none!important}
