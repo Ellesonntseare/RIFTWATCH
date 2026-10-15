@@ -1,8 +1,7 @@
 # RIFTWATCH delivery status — 13 October 2026
 
 - [x] Redesigned menus and hero selection
-- [x] Five playable heroes and supplied model assets
-- [x] KAI restored to the previous version using his supplied face
+- [x] Four playable operators and supplied model assets
 - [x] Third-person views, mouse look, arrow movement and aiming
 - [x] Muzzle firing, quiet CC0 music and volume control
 - [x] Ground medkits, ammo, power-ups and E-to-equip gun pickups
@@ -14,8 +13,6 @@
 
 ## Deferred at the user's request
 
-- KAI's head shape/upright alignment/opacity visual polish
-- KAI's body proportion polish while preserving face and clothes
 - Visual leg/foot polish on all heroes
 - Visual wrist/fingertip/gun-grip polish on all heroes
 

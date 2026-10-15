@@ -1,6 +1,6 @@
 # RIFTWATCH handoff — 13 October 2026
 
-The current user asked to skip, for now, KAI's head/body/limb cosmetic polish and all heroes' leg/finger/grip visual polish. Keep those tasks deferred. KAI uses the supplied figure texture, not Serame's generated portrait. The latest anatomical-head experiment was reverted. Do not substitute Serame's face for KAI again.
+The user removed the fifth operator and requested that its dedicated code and asset be removed. Four operators remain. Visual leg/finger/grip polish for the remaining operators is deferred.
 
 ## Current implementation
 
@@ -8,12 +8,11 @@ Local Node static + WebSocket server, localhost port 3000. START-GAME.cmd launch
 
 - public/js/main.js: gameplay, weapons/camera, maps, survival balance, host/guest simulation.
 - public/js/operations.js: mission recovery/defense/extraction; medkits, ammo, caches, temporary buffs, E-to-equip ground guns; shared pickups.
-- public/js/roster.js and public/extra-hero.json: Serame, Ghost, Rook, Atlas, KAI. KAI's underlying id remains serame-civilian for saved selection compatibility.
+- public/js/roster.js: four operators. Old saved selections for removed operators fall back to the first entry.
 - public/js/hero.js: model normalization, personal face only for Serame, weapons, motion.
 - public/js/hero-motion.js: walking/running retarget from supplied soldier, bone orientation offsets, fade to standing pose.
 - public/js/foot-grounding.js: sampled sole/toe/heel vertices keep models at ground elevation.
 - public/js/arm-ik.js and hero-weapon.js: two-bone arm placement against gun grip/handguard points, muzzle flash and world muzzle location. Visual polish is deferred.
-- public/js/figure-rig.js: original figure_360 GLB texture/body, added skeleton and arm/hand geometry. Clothes remain black shirt, trousers and shoes. Original face/hair restored. Cosmetic quality is not certified.
 - public/js/network.js + multiplayer-server.cjs: room codes, four players, hero selection, position/speed/pitch/weapon messages, host world snapshots, combat and pickup requests, disconnect handling.
 - public/js/voice.js: opt-in WebRTC room audio, mute/leave, speaking indicators, temporary TURN configuration if server credentials are set. No audio recording.
 - public/js/audio.js: synthesized effects and quiet CC0 soundtrack. Music defaults 9% and ducks during speech.
@@ -28,6 +27,10 @@ Automated tests cover missions, supplies, ground gun interaction/shared grants, 
 
 ## Source preservation
 
-The uploaded GLBs in models/ are retained. KAI's original file is models/figure_360.glb. Serame's active portrait is public/assets/hero-face.png. See CHARACTER-NOTES.md and MUSIC-CREDITS.md.
+The active uploaded GLBs in models/ are retained. Serame's active portrait is public/assets/hero-face.png. See CHARACTER-NOTES.md and MUSIC-CREDITS.md.
 
 Older one-off rebuild scripts at the repository root are historical tools and must not be rerun automatically; they can overwrite newer fixes. They are excluded from the release package.
+
+## Next session, at the user's request
+
+Do not start these in the current asset/map work: add solo or up-to-four-player missions for hostage rescue, bomb defusal, base defense, assassination, convoy escort, stealth infiltration, search and rescue, sabotage, supply recovery, survival, territory capture, and final assault. Completion should grant rewards; optional side missions may appear during open-world exploration.

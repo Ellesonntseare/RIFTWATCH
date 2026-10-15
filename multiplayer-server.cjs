@@ -1,9 +1,8 @@
 const {WebSocketServer,WebSocket}=require('ws');
 const crypto=require('node:crypto');
 const {shotHit,TARGET_KILLS,RESPAWN_MS}=require('./duel-rules.cjs');
-const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi']);
+const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi','island']);
 const HEROES=new Set(['personal','tactical','vanguard','sentinel']);
-try{const extra=JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,'public','extra-hero.json'),'utf8'));if(extra.enabled&&extra.file&&extra.id)HEROES.add(extra.id);}catch{}
 const vector=p=>Array.isArray(p)&&p.length===3&&p.every(n=>Number.isFinite(n)&&Math.abs(n)<12000);
 
 function attachMultiplayer(server){
@@ -75,9 +74,13 @@ function attachMultiplayer(server){
       if(m.type==='voice-config'){voiceConfig().then(iceServers=>send(ws,'voice-config',{iceServers}));return;}
       if(m.type==='voice-ready'){peer.voice=!!m.enabled;voicePeers(room);return;}
       if(m.type==='voice-signal'&&peer.voice&&room.peers.get(m.to)?.voice&&m.signal&&JSON.stringify(m.signal).length<16000){send(room.peers.get(m.to).ws,'voice-signal',{id:peer.id,signal:m.signal});return;}
+      if(m.type==='ping'){
+        if(now-(peer.lastPing||0)<1200||!['enemy','pickup','location'].includes(m.kind)||!Array.isArray(m.pos)||m.pos.length!==3||!m.pos.every(n=>Number.isFinite(n)&&Math.abs(n)<2000))return;
+        peer.lastPing=now;broadcast(room,'ping',{id:peer.id,name:peer.name,kind:m.kind,pos:m.pos},peer.id);return;
+      }
       if(m.type==='start'&&peer.id===room.host&&MAPS.has(m.mapKey)&&vector(m.spawn)){
         if(m.gameMode==='duel'&&(room.peers.size!==2||!vector(m.guestSpawn)))return send(ws,'error',{message:'1v1 needs exactly two players in the room.'});
-        room.start={mapKey:m.mapKey,spawn:m.spawn,guestSpawn:m.gameMode==='duel'?m.guestSpawn:null,gameMode:['endless','duel'].includes(m.gameMode)?m.gameMode:'campaign',difficulty:m.difficulty==='standard'?'standard':'relaxed'};
+        room.start={mapKey:m.mapKey,spawn:m.spawn,guestSpawn:m.gameMode==='duel'?m.guestSpawn:null,gameMode:['endless','duel','hunt'].includes(m.gameMode)?m.gameMode:'campaign',difficulty:m.difficulty==='standard'?'standard':'relaxed'};
         room.duel=m.gameMode==='duel'?{players:new Map([...room.peers.keys()].map(id=>[id,{hp:100,kills:0,deaths:0,respawnAt:0,shieldUntil:Date.now()+3500,lastShot:0}])),winner:null}:null;
         room.snapshot=null;broadcast(room,'start',room.start,peer.id);if(room.duel)duelState(room);return;
       }

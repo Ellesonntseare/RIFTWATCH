@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const THREE = require('three');
 const source = fs.readFileSync('public/js/operations.js','utf8').replace("import * as THREE from 'three';",'').replace('export function','function');
 const elements = new Map();
-const document = { getElementById(id) { if(!elements.has(id)) elements.set(id,{style:{},textContent:''}); return elements.get(id); } };
+const document = { getElementById(id) { if(!elements.has(id)) elements.set(id,{style:{},textContent:'',classList:{toggle(){}}}); return elements.get(id); } };
 const create = new Function('THREE','document',source+'; return createOperations;')(THREE,document);
 function setup() {
   const state={world:new THREE.Group(),map:{size:[200,200]},monsters:[],toSpawn:2,bossQueued:false};
@@ -27,9 +27,9 @@ test('medkits clamp health and timed effects expire only during updates',()=>{
   P.pos.copy(ops.items.find(i=>i.kind==='damage').pos);ops.update(0.1);assert.equal(ops.buffs.damage,20);
   ops.update(21);assert.equal(ops.buffs.damage,0);
 });
-test('health pickups remain on the ground and restore 55 health',()=>{
+test('health pickups float and restore 55 health',()=>{
   const {ops,P}=setup(),meds=ops.items.filter(i=>i.kind==='med');assert.equal(meds.length,3);
-  const med=meds[0];ops.update(1);assert.equal(med.body.position.y,.19);
+  const med=meds[0];ops.update(1);assert(med.body.position.y>.75);
   P.hp=20;P.pos.copy(med.pos);ops.update(.1);assert.equal(P.hp,75);assert(!ops.items.includes(med));
 });
 test('mystery cache requires interaction and can only be opened once',()=>{

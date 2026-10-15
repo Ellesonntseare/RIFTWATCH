@@ -2,15 +2,15 @@ import {downloadMap,downloadLabel} from './map-download.js?v=20261014-progress';
 import {isWaterSurface,submergedFloor,mapWorldScale} from './terrain.js';
 import {renderRadar} from './radar.js';
 import * as THREE from 'three';
-import { createOperations } from './operations.js';
+import { createOperations } from './operations.js?v=20261015-pickups-pings';
 import { dressMap } from './scenery.js';
 import { buildHero } from './hero.js';
 import { selectedHero } from './roster.js';
-import { createNetwork } from './network.js?v=20261015-voice-indicators';
+import { createNetwork } from './network.js?v=20261015-pickups-pings';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MAPS } from './maps.js';
-import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMonsterDetail, setBlobShadows } from './monsters.js';
+import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMonsterDetail, setBlobShadows } from './monsters.js?v=20261015-pickups-pings';
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
 import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
 import { installMenuClicks } from './ui-clicks.js?v=20261015-audio-startup-fix';
@@ -79,7 +79,7 @@ const state = {
   mode: 'menu', paused: false, time: 0, mapKey: 'yard', map: null, world: null,
   colliders: [], wallMeshes: [], barrels: [], monsters: [], c4s: [], particles: [], bloodStains: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0,
   wave: 0, toSpawn: 0, spawnTimer: 0, inter: 0, score: 0, kills: 0,
-  hurt: 0, shake: 0, hitT: 0, hitKill: false, flashT: 0, bannerT: 0,
+  hurt: 0, shake: 0, hitT: 0, hitKill: false, hitArmor: false, armorCueT: 0, flashT: 0, bannerT: 0,
 };
 const P = {
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: 0, kick: 0, bob: 0, onGround: true,
@@ -635,7 +635,7 @@ function spawnMonster(type, x, z) {
   const m = {
     id: ++state.nextMonsterId, type, T, hp: T.hp * (1 + 0.06 * w), x, z, group: built.group, parts: built.parts, mats: built.mats,
     speedMul: Math.min(1.5, 1 + 0.03 * w), cd: rand(0, 0.5), windup: 0, attackAnim: 0, dead: false, deadT: 0, flash: 0, anim: rand(0, 10),
-    moving: false, stuckN: 0, strafe: 0, strafeT: 0, stuckT: 0, lastX: x, lastZ: z, growlT: rand(2, 8),
+    moving: false, stuckN: 0, strafe: 0, strafeT: 0, flankSide:Math.random()<.5?-1:1, flankT:rand(1.5,3), stuckT: 0, lastX: x, lastZ: z, growlT: rand(2, 8),
   };
   if (T.boss) m.hp *= Math.max(1, state.wave / 5);
   if (T.aim) { const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); m.aim = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xff2222, transparent: true, opacity: 0.55, fog: false })); m.aim.frustumCulled = false; m.aim.visible = false; state.world.add(m.aim); }
@@ -648,6 +648,7 @@ function damageMonster(m, dmg, point, gib = false, head = false) {
   if (m.dead) return;
   if(network.role==='guest'){network.action({kind:'hit',id:m.id,damage:dmg,pos:point.toArray(),head,gib});m.flash=.1;return;}
   m.hp -= dmg; m.flash = 0.1;
+  if(m.T.armored&&m.hp<=m.maxhp*.5)m.armorBroken=true;
   const bleeds=m.type!=='drone';
   emit(bleeds?'blood':'spark', point, gib ? 12 : head ? 16 : 7, head ? 5 : 3.5, 0.6, 1, 0.4);
   let pts = gib ? 0 : head ? 50 : 10;
@@ -704,15 +705,19 @@ function updateMonsters(dt) {
     if (T.boss) bossAI(m, dt, dist);
 
     const attacking = T.ranged ? (m.los && dist <= T.range * 0.9) : dist <= T.range * 0.9;
-    m.moving = !attacking && !player.dead;
+    // Gunners circle an exposed player; runners keep their direct rush.
+    if(m.type==='shooter'&&(m.flankT-=dt)<=0){m.flankSide*=-1;m.flankT=rand(1.5,3);}
+    const flanking=m.type==='shooter'&&m.los&&dist>8&&dist<26&&!player.dead;
+    m.moving = (!attacking||flanking) && !player.dead;
     const retreat = T.ranged && m.los && dist < (T.keep || 7) && !player.dead;
     if (retreat) m.moving = true;
     if ((T.ranged && m.windup > 0) || m.slamT > 0 || T.stationary) m.moving = false;
     const previousX=m.x,previousZ=m.z;
     if (m.moving) {
       let mx = nx, mz = nz;
-      if (retreat) { mx = -nx; mz = -nz; }
-      if (m.strafeT > 0) { m.strafeT -= dt; mx = nx * 0.35 - nz * m.strafe * 0.9; mz = nz * 0.35 + nx * m.strafe * 0.9; }
+       if (retreat) { mx = -nx; mz = -nz; }
+       else if(flanking){mx=nx*.25-nz*m.flankSide*.85;mz=nz*.25+nx*m.flankSide*.85;}
+       if (m.strafeT > 0) { m.strafeT -= dt; mx = nx * 0.35 - nz * m.strafe * 0.9; mz = nz * 0.35 + nx * m.strafe * 0.9; }
       m.x += mx * speed * dt; m.z += mz * speed * dt;
     }
     for (const o of state.monsters) {
@@ -1091,10 +1096,13 @@ function fire() {
     const h = hits[0], o = h.object; end.copy(h.point);
     if (o.userData.monster) {
       const mm = o.userData.monster, head = (h.point.y - (mm.y || 0)) / mm.T.h > mm.T.headFrom;
-      damageMonster(mm, (operations.buffs.damage > 0 ? 1.8 : 1) * CFG.gun.dmg * (1 + 0.12 * up.dmg) * (head ? CFG.gun.headMul + 0.5 * up.head : (mm.T.bodyMul || 1)), h.point, false, head);
+      const damage=(operations.buffs.damage > 0 ? 1.8 : 1) * CFG.gun.dmg * (1 + 0.12 * up.dmg) * (head ? CFG.gun.headMul + 0.5 * up.head : (mm.T.bodyMul || 1));
+      const armorBreak=mm.T.armored&&!mm.armorBroken&&mm.hp>mm.maxhp*.5&&mm.hp-damage<=mm.maxhp*.5&&mm.hp-damage>0;
+      damageMonster(mm, damage, h.point, false, head);
+      if(armorBreak){mm.armorBroken=true;state.armorCueT=.8;sfx.empty();}
       state.hits++; if (head) state.heads++;
-      state.hitT = head ? 0.22 : 0.12; state.hitHead = head; head ? sfx.headshot() : sfx.hit();
-    } else if (o.userData.barrel) { damageBarrel(o.userData.barrel, CFG.gun.dmg * (1 + 0.12 * up.dmg), h.point); state.hitT = 0.1; state.hitKill = false; state.hitHead = false; }
+      state.hitT = armorBreak ? .25 : head ? 0.22 : 0.12; state.hitHead = head;state.hitArmor=armorBreak; head ? sfx.headshot() : sfx.hit();
+    } else if (o.userData.barrel) { damageBarrel(o.userData.barrel, CFG.gun.dmg * (1 + 0.12 * up.dmg), h.point); state.hitT = 0.1; state.hitKill = false; state.hitHead = false;state.hitArmor=false; }
     else if(state.gameMode!=='duel')emit('spark', h.point, 5, 3, 0.3, 0.7, 0.3);
   }
   tracerMat.color.setHex(CFG.gun.tracer);
@@ -1106,6 +1114,33 @@ function fire() {
   addTracer(start, end);
   P.kick += CFG.gun.recoil * rand(0.7, 1.3); P.pitch = Math.min(1.5, P.pitch + 0.0035); P.yaw += rand(-0.002, 0.002);
   P.gk = 1; state.flashT = 0.05; shotLight.position.copy(start); sfx[CFG.gun.snd]();
+}
+let activePing=null,lastPingAt=0;
+const pingRay=new THREE.Raycaster(),pingScreen=new THREE.Vector3();
+function showSquadPing(data){
+  if(state.mode!=='playing'||!Array.isArray(data.pos)||data.pos.length!==3)return;
+  activePing={pos:new THREE.Vector3(...data.pos),kind:data.kind,name:data.name||'Squad',expires:performance.now()+6000};
+  $('squad-ping').classList.remove('hidden');
+}
+function sendSquadPing(){
+  if(state.mode!=='playing'||state.paused||!network.role)return;
+  const now=performance.now();if(now-lastPingAt<1200)return;lastPingAt=now;
+  pingRay.setFromCamera({x:0,y:0},camera);pingRay.far=200;
+  const targets=[...state.wallMeshes,...state.monsters.filter(m=>!m.dead).map(m=>m.group),...operations.items.filter(i=>i.kind!=='relay').map(i=>i.group)];
+  const hit=pingRay.intersectObjects(targets,true)[0];
+  let kind='location';
+  if(hit?.object.userData.monster)kind='enemy';
+  else if(hit&&operations.items.some(i=>{let node=hit.object;while(node){if(node===i.group)return true;node=node.parent;}return false;}))kind='pickup';
+  const pos=hit?.point||pingRay.ray.at(35,new THREE.Vector3());
+  const data={kind,pos:pos.toArray(),name:selectedHero().name||'Operator'};
+  showSquadPing({...data,name:'You'});network.ping(data);
+}
+function updateSquadPing(){
+  if(!activePing||performance.now()>activePing.expires){activePing=null;$('squad-ping').classList.add('hidden');return;}
+  pingScreen.copy(activePing.pos).add(new THREE.Vector3(0,1.6,0)).project(camera);
+  const marker=$('squad-ping');marker.classList.toggle('hidden',pingScreen.z>1||pingScreen.z<0);
+  marker.style.left=Math.max(5,Math.min(95,(pingScreen.x+1)*50))+'%';marker.style.top=Math.max(12,Math.min(88,(1-pingScreen.y)*50))+'%';
+  marker.textContent=`◇ ${activePing.name}: ${activePing.kind.toUpperCase()} · ${Math.round(P.pos.distanceTo(activePing.pos))}m`;
 }
 
 function throwC4() {
@@ -1203,8 +1238,9 @@ function drawMinimap() {
 }
 let lastHudText=-Infinity;
 function updateHUD(dt) {
+  updateSquadPing();
   drawMinimap();
-  state.hurt = Math.max(0, state.hurt - dt * 1.5); state.hitT = Math.max(0, state.hitT - dt);
+  state.hurt = Math.max(0, state.hurt - dt * 1.5); state.hitT = Math.max(0, state.hitT - dt);state.armorCueT=Math.max(0,state.armorCueT-dt);
   // Text/DOM readouts refresh at 10 Hz; per-frame DOM writes cost frame time, especially on phones.
   const hudNow=performance.now();
   if(hudNow-lastHudText>=100){lastHudText=hudNow;
@@ -1222,7 +1258,7 @@ function updateHUD(dt) {
   $('compass').textContent = ['N','NE','E','SE','S','SW','W','NW'][Math.round((( -P.yaw * 180 / Math.PI) % 360 + 360) % 360 / 45) % 8] + ' / ' + state.map.name.toUpperCase();
   }
   $('hurt').style.opacity = clamp(state.hurt + (P.hp < 30 && !P.dead ? 0.25 : 0), 0, 1);
-  $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('on', state.hitT > 0); $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);
+  $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('on', state.hitT > 0); $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);$('hit').classList.toggle('armor',state.hitArmor&&state.hitT>0);$('armor-break').style.opacity=state.armorCueT>0?1:0;
   state.bannerT -= dt; if (state.bannerT <= 0) $('banner').style.opacity = 0;
 }
 
@@ -1355,7 +1391,7 @@ async function startGame(key,setup=null) {
   if(state.gameMode==='duel'){P.hp=P.maxHp=100;P.c4=0;state.wave=0;state.toSpawn=0;$('duel-hud').classList.remove('hidden');$('objective').classList.add('hidden');$('radar').classList.add('duel-radar');}
   else{$('duel-hud').classList.add('hidden');$('objective').classList.remove('hidden');$('radar').classList.remove('duel-radar');}
   state.coopSpawn=P.pos.clone();P.vel.set(0,0,0);P.yaw=Math.atan2(P.pos.x,P.pos.z);
-  Object.assign(state, { score: 0, kills: 0, hurt: 0, shake: 0, hitT: 0, flashT: 0, paused: false, mode: 'playing' });
+  Object.assign(state, { score: 0, kills: 0, hurt: 0, shake: 0, hitT: 0, hitArmor:false, armorCueT:0, flashT: 0, paused: false, mode: 'playing' });
   if(state.map.open)streamMapCollision(mapCache[key]);
   for (const k in keys) keys[k] = false; mouseDown = false;
   $('menu').classList.add('hidden'); $('map-loading').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('hud').classList.remove('hidden');$('mobile-controls').classList.toggle('hidden',!touchDevice);
@@ -1407,6 +1443,7 @@ function touchAction(action,down){
   else if(action==='run')keys.ShiftLeft=down;
   else if(action==='use'){operations.input(down);if(network.role==='guest'&&state.gameMode!=='duel')network.action({kind:'interact',held:down});}
   else if(down&&action==='reload')startReload();
+  else if(down&&action==='ping')sendSquadPing();
   else if(down&&action==='swap')switchWeapon((P.weapon+1)%WEAPONS.length);
   else if(down&&action==='c4'&&state.gameMode!=='duel'){if(state.c4s.some(c=>c.stuck))detonateAll();else throwC4();}
   else if(down&&action==='pov'&&playerAvatar){const modes=['shoulder','wide','first'];state.cameraMode=modes[(modes.indexOf(state.cameraMode)+1)%modes.length];state.thirdPerson=state.cameraMode!=='first';}
@@ -1425,6 +1462,7 @@ addEventListener('keydown', e => {
   if (e.repeat || state.mode !== 'playing' || state.paused) return;
   if (e.code === 'KeyV' && playerAvatar) {const modes=['shoulder','wide','first'];state.cameraMode=modes[(modes.indexOf(state.cameraMode)+1)%modes.length];state.thirdPerson=state.cameraMode!=='first';}
   if(e.code==='KeyC')aimToggle=!aimToggle;
+  if(e.code==='KeyT')sendSquadPing();
   if(e.code==='KeyE'){operations.input(true);if(network.role==='guest')network.action({kind:'interact',held:true});}
   if (e.code === 'KeyR') startReload(); else if (e.code === 'Digit1') switchWeapon(0); else if (e.code === 'Digit2') switchWeapon(1); else if (e.code === 'KeyQ') switchWeapon((P.weapon + 1) % WEAPONS.length); else if (e.code === 'KeyG') throwC4(); else if (e.code === 'KeyF') detonateAll();
 });
@@ -1453,6 +1491,7 @@ function fieldPath(a,b) {
 }
 function defenderSpot(radius) {
   const max=Math.min(38,Math.max(...state.map.size)*0.75);
+  let clearFallback=null;
   for(let i=0;i<160;i++) {
     const a=rand(0,Math.PI*2),r=rand(18,max),x=P.pos.x+Math.cos(a)*r,z=P.pos.z+Math.sin(a)*r;
     if(Math.abs(x)>state.map.size[0]/2-2 || Math.abs(z)>state.map.size[1]/2-2 || fieldBlocked(x,z,radius+0.8)) continue;
@@ -1461,14 +1500,16 @@ function defenderSpot(radius) {
     const p=new THREE.Vector3(x,y,z), origin=p.clone().add(new THREE.Vector3(0,1.5,0)), target=P.pos.clone().add(new THREE.Vector3(0,1.2,0)), direction=target.sub(origin), distance=direction.length();
     const losRay=new THREE.Raycaster(origin,direction.normalize(),0,distance); losRay.firstHitOnly=true;
     if(losRay.intersectObjects(state.wallMeshes,true).length) continue;
-    return p;
-  } return null;
+    const nearCover=state.colliders.some(c=>{const dx=Math.max(c.minX-x,0,x-c.maxX),dz=Math.max(c.minZ-z,0,z-c.maxZ);return dx*dx+dz*dz<12&&dx*dx+dz*dz>0.4;});
+    if(nearCover)return p;
+    clearFallback ||= p;
+  } return clearFallback;
 }
 const operations=createOperations({ state,P,camera,floorAt,clearPath:fieldPath,blocked:fieldBlocked,banner,
   touchDevice,
   weaponPickup:i=>{const object=gunGroups[i].clone(true);object.visible=true;object.traverse(o=>{if(o.isMesh){o.geometry=o.geometry.clone();o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();}});return object;},
   equipWeapon:i=>{switchWeapon(i);P.ammo=magSize();P.reserve=Math.min(WEAPONS[i].reserve*2,P.reserve+WEAPONS[i].mag);},
-  reward:n=>{state.score+=n;state.credits+=n;if(network.role==='host')for(const p of network.players.values())if(p.id!==network.id)network.direct(p.id,'reward',{points:n});},refill:giveAmmo,sound:()=>sfx.pickup(),
+  reward:n=>{state.score+=n;state.credits+=n;if(network.role==='host')for(const p of network.players.values())if(p.id!==network.id)network.direct(p.id,'reward',{points:n});},refill:giveAmmo,needsAmmo:()=>P.ammo<magSize()||P.reserve<CFG.gun.reserve,giveC4:()=>{P.c4=Math.min(6,P.c4+2);},sound:()=>sfx.pickup(),
   requestPickup:id=>network.action({kind:'pickup',id}),grantPickup:(id,kind)=>network.direct(id,'pickup',{kind}),remoteInteractions:()=>[...remoteHeld].filter(([,held])=>held).map(([id,held])=>{const p=network.players.get(id)?.position;return {held:held&&p?.active&&p.hp>0,pos:new THREE.Vector3(...(p?.pos||[9999,9999,9999]))};}) });
 
 // Shared gameplay: the room host simulates the world; the Node server relays
@@ -1550,6 +1591,7 @@ const network=createNetwork({
   onRoom:({role})=>{state.coop=role;},
   onStart:setup=>{pendingSnapshot=null;state.hostPaused=false;state.sharedBarrelsInitialized=false;state.lastSharedShop=0;startGame(setup.mapKey,setup);},
   onSnapshot:applyCoopSnapshot,
+  onPing:showSquadPing,
   onDuelState:applyDuelState,
   onDuelShot:m=>{if(state.gameMode==='duel'&&state.mode==='playing'&&m.id!==network.id){const duelFrom=new THREE.Vector3(...m.from);addTracer(duelFrom,new THREE.Vector3(...m.to));remoteShotSound(duelFrom,m.weapon);}},
   onDuelEnded:message=>{if(state.gameMode==='duel'&&state.mode==='playing'){showPause();$('mouse-status').textContent=message;}},

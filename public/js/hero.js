@@ -5,11 +5,10 @@ import { HEROES,selectedHero } from './roster.js';
 import { buildPersonalHead } from './personal-head.js';
 import {heroMotionClips,createHeroMotion} from './hero-motion.js';
 import {createHeroWeapon} from './hero-weapon.js';
-import {rigFigure} from './figure-rig.js';
 import {createBlobShadow} from './monsters.js';
 const templates=new Map();let faceTexture;
 export async function loadHero(file='MAIN HERO.glb') {
-  if(!templates.has(file))templates.set(file,new GLTFLoader().loadAsync('/models/'+file).then(gltf=>{if(file==='figure_360.glb')gltf.scene=rigFigure(gltf.scene);return gltf;}));
+  if(!templates.has(file))templates.set(file,new GLTFLoader().loadAsync('/models/'+file));
   faceTexture ||= new THREE.TextureLoader().loadAsync('/assets/hero-face.png');
   return Promise.all([templates.get(file),faceTexture]);
 }

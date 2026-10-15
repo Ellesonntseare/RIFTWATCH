@@ -42,6 +42,7 @@ export function createNetwork(callbacks){
         if(m.type==='voice-config')voice.configure(m.iceServers);
         if(m.type==='voice-peers')voice.sync(m.players);
         if(m.type==='voice-signal')voice.signal(m.id,m.signal);
+        if(m.type==='ping')callbacks.onPing?.(m);
         if(m.type==='error')status(m.message);
         if(m.type==='closed'){voice.stop(false);role=null;code=null;players.clear();render();status(m.message);callbacks.onDisconnect?.();}
         if(m.type==='left'){role=null;code=null;players.clear();render();status('SOLO MODE / CHOOSE A MAP');}
@@ -70,7 +71,7 @@ export function createNetwork(callbacks){
   if($('join-code').value)setTimeout(()=>{if(!code)join('join');},600);
   return {
     players,get id(){return id},get role(){return role},get code(){return code},
-    start:data=>send('start',data),action:action=>send('action',{action}),duelFire:data=>send('duel-fire',data),
+    start:data=>send('start',data),action:action=>send('action',{action}),duelFire:data=>send('duel-fire',data),ping:data=>send('ping',data),
     direct:(to,event,data)=>send('direct',{to,event,data}),effect:effect=>send('effect',{effect}),
     tick(now,position,snapshot){if(!code)return;if(now-lastPosition>.08){lastPosition=now;send('position',position);}if(role==='host'&&snapshot&&now-lastState>.1){lastState=now;send('snapshot',{snapshot:snapshot()});}},
     render,

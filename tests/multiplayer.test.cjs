@@ -21,6 +21,7 @@ test('rooms synchronize different heroes, host snapshots, damage actions and dis
     guest.send('action',{action:{kind:'hit',id:1,damage:25,pos:[0,1,40]}});assert.equal((await host.next('action')).action.damage,25);
     host.send('direct',{to:position.id,event:'hurt',data:{damage:7}});assert.equal((await guest.next('hurt')).data.damage,7);
     host.send('direct',{to:position.id,event:'pickup',data:{kind:'med'}});assert.equal((await guest.next('pickup')).data.kind,'med');
+    host.send('ping',{kind:'enemy',pos:[5,1,42]});const ping=await guest.next('ping');assert.equal(ping.kind,'enemy');assert.deepEqual(ping.pos,[5,1,42]);assert.equal(ping.name,'Serame');
     host.send('voice-config');assert.match((await host.next('voice-config')).iceServers[0].urls,/stun/);
     host.send('voice-ready',{enabled:true});guest.send('voice-ready',{enabled:true});
     guest.send('voice-signal',{to:room.host,signal:{description:{type:'offer',sdp:'test-offer'}}});
@@ -28,6 +29,7 @@ test('rooms synchronize different heroes, host snapshots, damage actions and dis
     host.send('voice-signal',{to:position.id,signal:{candidate:{candidate:'test-candidate'}}});
     assert.equal((await guest.next('voice-signal')).signal.candidate.candidate,'test-candidate');
     const late=await client(url);peers.push(late);late.send('join',{code:room.code,name:'Late',hero:'vanguard'});await late.next('joined');await late.next('start');assert.equal((await late.next('snapshot')).snapshot.wave,1);
+    host.send('start',{mapKey:'island',spawn:[0,0,0],gameMode:'hunt'});const hunt=await guest.next('start');assert.equal(hunt.mapKey,'island');assert.equal(hunt.gameMode,'hunt');
     host.ws.close();assert.match((await guest.next('closed')).message,/host left/i);assert.equal(rooms.size,0);
   }finally{for(const p of peers)p.ws.terminate();await new Promise(r=>wss.close(r));await new Promise(r=>server.close(r));}
 });

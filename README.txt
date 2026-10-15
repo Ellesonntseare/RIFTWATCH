@@ -47,7 +47,7 @@ Default 9%; the Music slider adjusts 0–30%. Speech reduces music further.
 CURRENT LIMITATIONS
 The host browser must remain open and active. Host departure closes the room.
 The existing Cloudflare tunnel serves the game, but full remote gameplay and a real two-person microphone call remain unverified. No TURN account was configured by this project.
-KAI's head/body/limb/grip cosmetic polish and the other heroes' limb/grip visual polish are deferred at your request.
+The four remaining operators' limb/grip visual polish is deferred at your request.
 Large imported maps can still take time to decode and require a capable GPU. The loading panel shows download progress and preparation stages.
 Phone Performance starts at one rendered pixel per CSS pixel and only lowers resolution during sustained slow frames; it can recover resolution when performance improves.
 

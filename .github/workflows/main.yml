@@ -15,10 +15,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch optimized game models
         run: |
-          git lfs pull --include="models/web/*.glb,models/figure_360.glb,models/serame-head.glb,models/rabbit_-_realistic_3d_model_demo_free.glb" --exclude=""
+          git lfs pull --include="models/web/*.glb,models/serame-head.glb,models/rabbit_-_realistic_3d_model_demo_free.glb" --exclude=""
           mkdir -p app/src/main/assets/models
           cp models/web/*.glb app/src/main/assets/models/
-          cp models/figure_360.glb models/serame-head.glb models/rabbit_-_realistic_3d_model_demo_free.glb app/src/main/assets/models/
+          cp models/serame-head.glb models/rabbit_-_realistic_3d_model_demo_free.glb app/src/main/assets/models/
           for model in app/src/main/assets/models/*.glb; do
             test "$(head -c 4 "$model")" = "glTF" || { echo "Missing LFS model: $model"; exit 1; }
           done

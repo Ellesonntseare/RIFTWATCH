@@ -20,8 +20,8 @@ jobs:
           cache: npm
       - name: Fetch lightweight character and enemy models for animation tests
         run: |
-          git lfs pull --include="models/web/*.glb,models/figure_360.glb" --exclude=""
-          for file in models/web/*.glb models/figure_360.glb; do
+          git lfs pull --include="models/web/*.glb" --exclude=""
+          for file in models/web/*.glb; do
             test "$(head -c 4 "$file")" = "glTF" || { echo "Missing LFS model: $file"; exit 1; }
           done
       - name: Install dependencies

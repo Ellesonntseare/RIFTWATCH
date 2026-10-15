@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>RIFTWATCH</title>
 <!-- The cinematic home screen is the entry point. Operator selection lives in its own pane. -->
-<link rel="stylesheet" href="/style.css?v=20261015-hud-editor">
+<link rel="stylesheet" href="/style.css?v=20261015-pickups-pings">
 <link rel="stylesheet" href="/menu-cinematic.css?v=20261015-operator-swipe">
-<script type="importmap">{"imports": {"three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/three-mesh-bvh/build/index.module.js", "/js/arm-ik.js": "/js/arm-ik.js?v=20261015-resolution-fix", "/js/audio.js": "/js/audio.js?v=20261015-resolution-fix", "/js/figure-rig.js": "/js/figure-rig.js?v=20261015-resolution-fix", "/js/foot-grounding.js": "/js/foot-grounding.js?v=20261015-resolution-fix", "/js/hero-motion.js": "/js/hero-motion.js?v=20261015-resolution-fix", "/js/hero-preview.js": "/js/hero-preview.js?v=20261015-resolution-fix", "/js/hero-selection.js": "/js/hero-selection.js?v=20261015-resolution-fix", "/js/hero-weapon.js": "/js/hero-weapon.js?v=20261015-resolution-fix", "/js/hero.js": "/js/hero.js?v=20261015-resolution-fix", "/js/main.js": "/js/main.js?v=20261015-resolution-fix", "/js/maps.js": "/js/maps.js?v=20261015-resolution-fix", "/js/monsters.js": "/js/monsters.js?v=20261015-resolution-fix", "/js/network.js": "/js/network.js?v=20261015-resolution-fix", "/js/operations.js": "/js/operations.js?v=20261015-resolution-fix", "/js/personal-head.js": "/js/personal-head.js?v=20261015-resolution-fix", "/js/roster.js": "/js/roster.js?v=20261015-resolution-fix", "/js/scenery.js": "/js/scenery.js?v=20261015-resolution-fix", "/js/voice.js": "/js/voice.js?v=20261015-resolution-fix", "/js/wardrobe.js": "/js/wardrobe.js?v=20261015-resolution-fix", "/js/radar.js": "/js/radar.js?v=20261015-resolution-fix", "/js/terrain.js": "/js/terrain.js?v=20261015-resolution-fix"}}</script>
+<script type="importmap">{"imports": {"three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/three-mesh-bvh/build/index.module.js", "/js/arm-ik.js": "/js/arm-ik.js?v=20261015-resolution-fix", "/js/audio.js": "/js/audio.js?v=20261015-resolution-fix", "/js/foot-grounding.js": "/js/foot-grounding.js?v=20261015-resolution-fix", "/js/hero-motion.js": "/js/hero-motion.js?v=20261015-resolution-fix", "/js/hero-preview.js": "/js/hero-preview.js?v=20261015-resolution-fix", "/js/hero-selection.js": "/js/hero-selection.js?v=20261015-resolution-fix", "/js/hero-weapon.js": "/js/hero-weapon.js?v=20261015-resolution-fix", "/js/hero.js": "/js/hero.js?v=20261015-no-kai", "/js/main.js": "/js/main.js?v=20261015-resolution-fix", "/js/maps.js": "/js/maps.js?v=20261015-resolution-fix", "/js/monsters.js": "/js/monsters.js?v=20261015-resolution-fix", "/js/network.js": "/js/network.js?v=20261015-resolution-fix", "/js/operations.js": "/js/operations.js?v=20261015-resolution-fix", "/js/personal-head.js": "/js/personal-head.js?v=20261015-resolution-fix", "/js/roster.js": "/js/roster.js?v=20261015-no-kai", "/js/scenery.js": "/js/scenery.js?v=20261015-resolution-fix", "/js/voice.js": "/js/voice.js?v=20261015-resolution-fix", "/js/wardrobe.js": "/js/wardrobe.js?v=20261015-resolution-fix", "/js/radar.js": "/js/radar.js?v=20261015-resolution-fix", "/js/terrain.js": "/js/terrain.js?v=20261015-resolution-fix"}}</script>
 </head>
 <body>
 <div id="hud" class="hidden">
@@ -18,8 +18,8 @@
     <div class="radar-meta"><span>45 m <b>/</b> HEADING UP</span><span id="radar-objective">RELAY</span></div>
     <div class="radar-legend"><span class="radar-enemy">● HOSTILE</span><span class="radar-squad">◆ SQUAD</span><span class="radar-relay">◇ RELAY</span></div>
   </section>
-  <div id="compass"></div><div id="objective"><span class="eyebrow">ACTIVE OPERATION</span><h3 id="objective-title">RECOVER THE DATA</h3><p id="objective-detail"></p><div class="objective-track"><div id="objective-progress"></div></div></div><div id="interact"></div><div id="buffs"></div><div id="waypoint"></div><div id="scope-overlay" class="hidden" aria-hidden="true"></div><div id="cross"></div>
-  <div id="hit"></div>
+  <div id="compass"></div><div id="objective"><span class="eyebrow">ACTIVE OPERATION</span><h3 id="objective-title">RECOVER THE DATA</h3><p id="objective-detail"></p><div class="objective-track"><div id="objective-progress"></div></div></div><p id="side-objective" class="hidden"></p><div id="interact"></div><div id="buffs"></div><div id="waypoint"></div><div id="scope-overlay" class="hidden" aria-hidden="true"></div><div id="cross"></div>
+  <div id="hit"></div><div id="armor-break" aria-hidden="true">ARMOR BROKEN</div><div id="squad-ping" class="hidden" aria-live="polite"></div>
   <div id="camera-label"></div><div id="protection"></div>
   <div id="coop-hud"></div><div id="duel-hud" class="hidden"><strong>1V1 DUEL</strong><span id="duel-score">0 — 0</span><small>FIRST TO 5</small></div>
   <div id="voice-hud"></div><div id="voice-speaking"></div><div id="voice-roster" aria-live="polite"></div>
@@ -63,12 +63,13 @@
     <symbol id="icon-use" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12"/><text x="16" y="23" text-anchor="middle" font-size="19" stroke="none" fill="currentColor" font-family="sans-serif" font-weight="bold">E</text></symbol>
     <symbol id="icon-c4" viewBox="0 0 32 32"><rect x="7" y="10" width="18" height="18" rx="2"/><path d="M16 10V5h7m-11 13h8m-4-4v8"/></symbol>
     <symbol id="icon-pov" viewBox="0 0 32 32"><path d="M2 16Q16 2 30 16 16 30 2 16Z"/><circle cx="16" cy="16" r="4"/></symbol>
+    <symbol id="icon-ping" viewBox="0 0 32 32"><path d="M16 29V19m0-16a9 9 0 0 0-9 9c0 7 9 15 9 15s9-8 9-15a9 9 0 0 0-9-9Z"/><circle cx="16" cy="12" r="3"/></symbol>
     <symbol id="icon-pause" viewBox="0 0 32 32"><path d="M11 5v22m10-22v22"/></symbol>
   </svg>
   <div id="touch-look" aria-label="Drag to look around"></div>
   <div id="touch-stick" aria-label="Movement joystick"><div id="touch-stick-knob"></div></div>
   <button class="touch-btn touch-fire" data-touch="fire" aria-label="Fire"><svg><use href="#icon-fire"/></svg><span>FIRE</span></button><button class="touch-btn touch-aim" data-touch="aim" aria-label="Aim"><svg><use href="#icon-aim"/></svg><span>AIM</span></button><button class="touch-btn touch-jump" data-touch="jump" aria-label="Jump"><svg><use href="#icon-jump"/></svg><span>JUMP</span></button><button class="touch-btn touch-run" data-touch="run" aria-label="Sprint"><svg><use href="#icon-run"/></svg><span>RUN</span></button>
-  <button class="touch-btn touch-reload" data-touch="reload" aria-label="Reload"><svg><use href="#icon-reload"/></svg><span>RELOAD</span></button><button class="touch-btn touch-swap" data-touch="swap" aria-label="Swap weapon"><svg><use href="#icon-swap"/></svg><span>SWAP</span></button><button class="touch-btn touch-use" data-touch="use" aria-label="Hold E to interact, recover data or extract"><svg><use href="#icon-use"/></svg><span>HOLD</span></button><button class="touch-btn touch-c4" data-touch="c4" aria-label="Throw or detonate C4"><svg><use href="#icon-c4"/></svg><span>C4</span></button><button class="touch-btn touch-pov" data-touch="pov" aria-label="Switch camera view"><svg><use href="#icon-pov"/></svg><span>VIEW</span></button><button class="touch-btn touch-pause" data-touch="pause" aria-label="Pause"><svg><use href="#icon-pause"/></svg><span>PAUSE</span></button>
+  <button class="touch-btn touch-reload" data-touch="reload" aria-label="Reload"><svg><use href="#icon-reload"/></svg><span>RELOAD</span></button><button class="touch-btn touch-swap" data-touch="swap" aria-label="Swap weapon"><svg><use href="#icon-swap"/></svg><span>SWAP</span></button><button class="touch-btn touch-use" data-touch="use" aria-label="Hold E to interact, recover data or extract"><svg><use href="#icon-use"/></svg><span>HOLD</span></button><button class="touch-btn touch-c4" data-touch="c4" aria-label="Throw or detonate C4"><svg><use href="#icon-c4"/></svg><span>C4</span></button><button class="touch-btn touch-pov" data-touch="pov" aria-label="Switch camera view"><svg><use href="#icon-pov"/></svg><span>VIEW</span></button><button class="touch-btn touch-ping" data-touch="ping" aria-label="Ping target for squad"><svg><use href="#icon-ping"/></svg><span>PING</span></button><button class="touch-btn touch-pause" data-touch="pause" aria-label="Pause"><svg><use href="#icon-pause"/></svg><span>PAUSE</span></button>
 </div>
 <div id="hud-editor" class="hidden" aria-label="Customize touch HUD"><strong>CUSTOMIZE HUD</strong><span>Drag a control to move it. Tap to resize.</span><label>SIZE <input id="hud-size" type="range" min="60" max="160" value="100"></label><label>OPACITY <input id="hud-opacity" type="range" min="35" max="100" value="90"></label><button id="hud-reset">RESET</button><button id="hud-cancel">CANCEL</button><button id="hud-save">SAVE</button></div>
 
@@ -89,7 +90,7 @@
   <button id="tomenu">MENU</button>
 </div>
 
-<script type="module" src="/js/main.js?v=20261015-voice-indicators"></script>
+<script type="module" src="/js/main.js?v=20261015-pickups-pings"></script>
 <script type="module" src="/js/menu-cinematic.js?v=20261015-operator-swipe"></script>
 </body>
 </html>

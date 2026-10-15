@@ -4,9 +4,5 @@ export const HEROES = [
   { id:'vanguard',role:'ASSAULT OPERATOR',file:'HERO 3.glb',hp:130,speed:5.5,reload:1,description:'A hardened assault operator built to hold dangerous routes. Trades a little speed for the health to stay in the fight.',trait:'HOLD THE LINE',traitInfo:'130 health · reinforced armor · measured movement',accent:0xffc68b },
   { id:'sentinel',role:'HEAVY SENTINEL',file:'HERO 1.glb',hp:160,speed:4.8,reload:1.1,description:'Heavy armor for the hardest sectors. Durable and deliberate, Atlas can take punishment while the squad would seek cover.',trait:'FORTRESS',traitInfo:'160 health · heavy armor · slower movement and reload',accent:0xc4afff },
 ];
-// The reserved hero appears only after its model has been supplied and enabled.
-if(typeof window!=='undefined'){
-  try{const extra=await (await fetch('/extra-hero.json',{signal:AbortSignal.timeout(3000)})).json();if(extra.enabled&&extra.file&&extra.id&&!HEROES.some(h=>h.id===extra.id))HEROES.push(extra);}catch(e){console.warn('Additional hero configuration',e.message);}
-}
 export function operatorName(){try{return localStorage.getItem('riftwatch-custom-name-set')==='1'?(localStorage.getItem('riftwatch-operator-name')||'').trim().slice(0,24):'';}catch{return '';}}
 export function selectedHero() {let id='personal';try{id=localStorage.getItem('riftwatch-hero')||localStorage.getItem('riftwatch-skin')||id;}catch{}return {...(HEROES.find(h=>h.id===id)||HEROES[0]),name:operatorName()};}
