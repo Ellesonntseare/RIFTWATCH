@@ -25,9 +25,8 @@ function initializeCinematicMenu() {
       <nav class="rw-topnav" aria-label="Main navigation">
         <button class="rw-top-link active" type="button" data-rw-home>GAME MODES</button>
         <button class="rw-top-link" type="button" data-rw-open="operator">OPERATORS</button>
-        <button class="rw-top-link" type="button" data-rw-open="operator">CUSTOMIZE</button>
         <button class="rw-top-link" type="button" data-rw-open="squad">MULTIPLAYER</button>
-        <button class="rw-top-link" type="button" data-rw-open="options">OPTIONS</button>
+        <button class="rw-top-link" type="button" data-rw-open="options">SETTINGS</button>
       </nav>
       <button type="button" class="rw-profile" data-rw-open="squad"><small>PROFILE</small><strong id="rw-profile-name">OPERATOR</strong><span>▦</span></button>
     </header>
