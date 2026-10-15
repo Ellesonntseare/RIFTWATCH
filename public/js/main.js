@@ -545,6 +545,12 @@ function updateParticles(dt) {
     p.m.scale.setScalar(p.size * clamp(p.life / p.max, 0.05, 1));
   }
 }
+// Play a friend's gunshot, quieter with distance (the shot message already reaches us; it just had no sound).
+function remoteShotSound(pos, weapon) {
+  const v = clamp(1 - camera.position.distanceTo(pos) / 90, 0.12, 0.7);
+  const snd = WEAPONS[weapon === 1 ? 1 : 0]?.snd || 'shot';
+  (sfx[snd] || sfx.shot)(v);
+}
 function addTracer(a, b) {
   const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), tracerMat);
   l.frustumCulled = false; scene.add(l); state.tracers.push({ l, life: 0.06 });
@@ -1095,8 +1101,8 @@ function fire() {
   const start = origin;
   if(state.thirdPerson)playerAvatar?.flash();
   if(state.gameMode==='duel')network.duelFire({from:start.toArray(),to:end.toArray(),weapon:P.weapon});
-  else if(network.role==='guest')network.action({kind:'shot',pos:start.toArray(),end:end.toArray()});
-  else if(network.role==='host')network.effect({kind:'shot',pos:start.toArray(),end:end.toArray(),owner:network.id});
+  else if(network.role==='guest')network.action({kind:'shot',pos:start.toArray(),end:end.toArray(),weapon:P.weapon});
+  else if(network.role==='host')network.effect({kind:'shot',pos:start.toArray(),end:end.toArray(),owner:network.id,weapon:P.weapon});
   addTracer(start, end);
   P.kick += CFG.gun.recoil * rand(0.7, 1.3); P.pitch = Math.min(1.5, P.pitch + 0.0035); P.yaw += rand(-0.002, 0.002);
   P.gk = 1; state.flashT = 0.05; shotLight.position.copy(start); sfx[CFG.gun.snd]();
@@ -1524,7 +1530,7 @@ function coopAction(id,a){
   const pos=new THREE.Vector3(...player.pos);
   if(a.kind==='interact'){remoteHeld.set(id,!!a.held);return;}
   if(a.kind==='pickup'){operations.claim(a.id,id,pos);return;}
-  if(a.kind==='shot'&&Array.isArray(a.end)){const from=new THREE.Vector3(...a.pos),end=new THREE.Vector3(...a.end);if(from.distanceTo(pos)<8&&from.distanceTo(end)<300){addTracer(from,end);network.effect({kind:'shot',pos:a.pos,end:a.end,owner:id});}return;}
+  if(a.kind==='shot'&&Array.isArray(a.end)){const from=new THREE.Vector3(...a.pos),end=new THREE.Vector3(...a.end);if(from.distanceTo(pos)<8&&from.distanceTo(end)<300){addTracer(from,end);remoteShotSound(from,a.weapon);network.effect({kind:'shot',pos:a.pos,end:a.end,owner:id,weapon:a.weapon===1?1:0});}return;}
   const before={score:state.score,credits:state.credits,kills:state.kills};
   if(a.kind==='hit'){const m=state.monsters.find(m=>m.id===a.id&&!m.dead);if(m&&Math.hypot(m.x-pos.x,m.z-pos.z)<270)damageMonster(m,a.damage,new THREE.Vector3(...a.pos),!!a.gib,!!a.head);}
   if(a.kind==='barrel'){const b=state.barrels.find(b=>b.netId===a.id&&b.alive);if(b&&Math.hypot(b.x-pos.x,b.z-pos.z)<270)damageBarrel(b,a.damage,new THREE.Vector3(...a.pos));}
@@ -1540,7 +1546,7 @@ const network=createNetwork({
   onStart:setup=>{pendingSnapshot=null;state.hostPaused=false;state.sharedBarrelsInitialized=false;state.lastSharedShop=0;startGame(setup.mapKey,setup);},
   onSnapshot:applyCoopSnapshot,
   onDuelState:applyDuelState,
-  onDuelShot:m=>{if(state.gameMode==='duel'&&state.mode==='playing'&&m.id!==network.id)addTracer(new THREE.Vector3(...m.from),new THREE.Vector3(...m.to));},
+  onDuelShot:m=>{if(state.gameMode==='duel'&&state.mode==='playing'&&m.id!==network.id){const duelFrom=new THREE.Vector3(...m.from);addTracer(duelFrom,new THREE.Vector3(...m.to));remoteShotSound(duelFrom,m.weapon);}},
   onDuelEnded:message=>{if(state.gameMode==='duel'&&state.mode==='playing'){showPause();$('mouse-status').textContent=message;}},
   onAction:coopAction,
   onDirect:(type,data)=>{
@@ -1551,7 +1557,7 @@ const network=createNetwork({
   },
   onEffect:e=>{
     if(state.mode!=='playing')return;
-    if(e.kind==='shot'&&e.owner!==network.id)addTracer(new THREE.Vector3(...e.pos),new THREE.Vector3(...e.end));
+    if(e.kind==='shot'&&e.owner!==network.id){const shotFrom=new THREE.Vector3(...e.pos);addTracer(shotFrom,new THREE.Vector3(...e.end));remoteShotSound(shotFrom,e.weapon);}
     if(e.kind==='explosion')explode(new THREE.Vector3(...e.pos),e.radius,0);
     if(e.kind==='bullets'){const from=new THREE.Vector3(...e.from),base=new THREE.Vector3(...e.dir);for(let i=0;i<e.count;i++){const dir=base.clone().applyAxisAngle(UP,(i-(e.count-1)/2)*e.spread),material=projMats[e.col]||(projMats[e.col]=new THREE.MeshBasicMaterial({color:e.col,fog:false})),mesh=new THREE.Mesh(projGeo,material);mesh.position.copy(from);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),dir);state.world.add(mesh);state.projs.push({mesh,v:dir.multiplyScalar(e.speed),life:3,dmg:0});}}
   },

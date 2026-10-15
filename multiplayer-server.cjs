@@ -85,7 +85,7 @@ function attachMultiplayer(server){
         if(Math.hypot(m.from[0]-peer.position.pos[0],m.from[1]-peer.position.pos[1],m.from[2]-peer.position.pos[2])>3.5||Math.hypot(m.to[0]-m.from[0],m.to[1]-m.from[1],m.to[2]-m.from[2])>260)return;
         shooter.lastShot=now;
         const hit=shotHit(m.from,m.to,targetPeer.position.pos);
-        broadcast(room,'duel-shot',{id:peer.id,from:m.from,to:hit?.point||m.to});
+        broadcast(room,'duel-shot',{id:peer.id,from:m.from,to:hit?.point||m.to,weapon:m.weapon===1?1:0});
         if(!hit||now<target.shieldUntil)return;
         target.hp=Math.max(0,target.hp-(m.weapon===1?hit.head?38:14:hit.head?75:25));
         if(target.hp===0){target.deaths++;target.respawnAt=now+RESPAWN_MS;shooter.kills++;if(shooter.kills>=TARGET_KILLS)room.duel.winner=peer.id;}

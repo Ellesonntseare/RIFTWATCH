@@ -25,9 +25,9 @@ function tone(f0, f1, dur, vol, type = 'sine', delay = 0) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur);
 }
 export const sfx = {
-  shot: () => { noise(0.035, 0.8, 5500, 'highpass'); noise(0.18, 0.5, 1700); tone(130, 38, 0.14, 0.6, 'triangle'); tone(900, 180, 0.025, 0.12, 'square'); },
+  shot: (v = 1) => { noise(0.035, 0.8 * v, 5500, 'highpass'); noise(0.18, 0.5 * v, 1700); tone(130, 38, 0.14, 0.6 * v, 'triangle'); tone(900, 180, 0.025, 0.12 * v, 'square'); },
   step: () => { noise(0.075, 0.13, 700); tone(90, 50, 0.06, 0.06); },
-  laser: () => { tone(1500, 300, 0.12, 0.25, 'sawtooth'); noise(0.05, 0.2, 6000, 'highpass'); },
+  laser: (v = 1) => { tone(1500, 300, 0.12, 0.25 * v, 'sawtooth'); noise(0.05, 0.2 * v, 6000, 'highpass'); },
   hit: () => tone(300, 120, 0.06, 0.25, 'square'),
   headshot: () => { tone(1200, 1800, 0.12, 0.4, 'triangle'); tone(900, 400, 0.15, 0.3, 'square', 0.02); },
   kill: () => { tone(220, 60, 0.25, 0.4, 'sawtooth'); },
