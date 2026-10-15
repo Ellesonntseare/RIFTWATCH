@@ -6,3 +6,7 @@ node_modules/
 coverage/
 tests/server-output.log
 tests/server-error.log
+.gradle/
+build/
+app/build/
+local.properties

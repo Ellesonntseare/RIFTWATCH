@@ -5,6 +5,10 @@ Extract the whole folder. Install Node.js 20+ if needed, then double-click START
 Open http://localhost:3000. Keep the server window running.
 Dependencies and browser libraries are bundled. If node_modules is missing, run npm ci.
 
+ANDROID APK
+Open GitHub Actions > Build Android APK > latest successful run > Artifacts, then download RIFTWATCH-Android-APK. Unzip it and install app-debug.apk on an Android phone (Android 8 or newer). This is a debug-signed APK for direct installation, not a Play Store release.
+The app opens https://rift.teamtrader.co.za/hero.html and uses the game's touch controls. It rotates when the phone rotates and auto-rotate is enabled; no landscape button is needed. The game server and Cloudflare tunnel must be running and reachable for the app to play. A successful APK build does not prove remote gameplay works.
+
 PLAY
 Choose a hero with left/right arrows before deploying. Each hero has its own health, speed and reload stats.
 Select one of five maps. Recover the relay data, clear the hostiles, return to the relay, and hold E to extract.
@@ -44,7 +48,7 @@ The host browser must remain open and active. Host departure closes the room.
 The existing Cloudflare tunnel serves the game, but full remote gameplay and a real two-person microphone call remain unverified. No TURN account was configured by this project.
 KAI's head/body/limb/grip cosmetic polish and the other heroes' limb/grip visual polish are deferred at your request.
 Large imported maps can still take time to decode and require a capable GPU. The loading panel shows download progress and preparation stages.
-Phone Performance starts at one rendered pixel per CSS pixel and only lowers resolution during sustained slow frames; it can recover resolution when performance improves. This game's files contain no Android build project, so an APK packaging workflow needs to be supplied separately.
+Phone Performance starts at one rendered pixel per CSS pixel and only lowers resolution during sustained slow frames; it can recover resolution when performance improves.
 
 DEVELOPMENT
 npm test
