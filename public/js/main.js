@@ -1048,7 +1048,7 @@ function updateCamera(dt) {
     else{cameraRay.set(camera.position,cameraDirection);cameraRay.far=distance;wall=cameraRay.intersectObjects(state.wallMeshes,true)[0];}
     camera.position.addScaledVector(offset,wall ? Math.max(.05,wall.distance-.2)/distance : 1);
   }
-  if (playerAvatar) {playerAvatar.root.visible=!!state.thirdPerson && !P.dead;playerAvatar.root.position.copy(P.pos);playerAvatar.root.rotation.y=P.yaw+Math.PI;playerAvatar.update(dt,sp>.5,sp,P.weapon,P.pitch);}
+  if (playerAvatar) {playerAvatar.root.visible=!!state.thirdPerson && !P.dead;playerAvatar.root.position.copy(P.pos);playerAvatar.root.rotation.y=P.yaw+Math.PI;playerAvatar.update(dt,sp>.5,sp,P.weapon,P.pitch,{airborne:!P.onGround});}
   camera.updateMatrixWorld();
   if (state.sun) { state.sun.target.position.set(P.pos.x, 0, P.pos.z); state.sun.position.set(P.pos.x + 20, 45, P.pos.z + 12); state.sun.target.updateMatrixWorld(); }
 }
@@ -1305,7 +1305,7 @@ function frame(now) {
     }
   }else{frameTotal=frameSamples=0;}
   const movementSpeed=state.paused||P.dead?0:Math.hypot(P.vel.x,P.vel.z);
-  network.tick(now/1000,{pos:P.pos.toArray(),yaw:P.yaw,pitch:P.pitch,weapon:P.weapon,aiming:isAiming(),hp:P.hp,active:state.mode==='playing',moving:movementSpeed>.5,speed:movementSpeed},state.map&&network.role==='host'&&state.gameMode!=='duel'?coopSnapshot:null);
+  network.tick(now/1000,{pos:P.pos.toArray(),yaw:P.yaw,pitch:P.pitch,weapon:P.weapon,aiming:isAiming(),hp:P.hp,active:state.mode==='playing',moving:movementSpeed>.5,speed:movementSpeed,airborne:!P.onGround},state.map&&network.role==='host'&&state.gameMode!=='duel'?coopSnapshot:null);
   const ambientOn = state.mode === 'playing' && !state.paused;
   if (state.ambientOn !== ambientOn) { state.ambientOn = ambientOn; setAmbience(ambientOn); }
   if(state.mode==='playing'&&!state.paused)update(dt);
@@ -1548,7 +1548,7 @@ function updateRemotePlayers(dt){
     if(!entry){entry={loading:true,avatar:null};remoteAvatars.set(p.id,entry);buildHero(p.hero).then(avatar=>{if(!remoteAvatars.has(p.id))return;entry.avatar=avatar;entry.loading=false;avatar.root.position.fromArray(p.position.pos);}).catch(e=>{console.warn('Co-op avatar',e.message);entry.loading=false;});}
     if(!entry.avatar)continue;
     const avatar=entry.avatar; if(avatar.root.parent!==state.world)state.world.add(avatar.root);
-    avatar.root.visible=p.position.hp>0;avatar.root.position.lerp(new THREE.Vector3(...p.position.pos),1-Math.exp(-dt*14));avatar.root.rotation.y=angleLerp(avatar.root.rotation.y,p.position.yaw+Math.PI,Math.min(1,dt*14));avatar.update(dt,p.position.moving,p.position.speed||0,p.position.weapon||0,p.position.pitch||0);
+    avatar.root.visible=p.position.hp>0;avatar.root.position.lerp(new THREE.Vector3(...p.position.pos),1-Math.exp(-dt*14));avatar.root.rotation.y=angleLerp(avatar.root.rotation.y,p.position.yaw+Math.PI,Math.min(1,dt*14));avatar.update(dt,p.position.moving,p.position.speed||0,p.position.weapon||0,p.position.pitch||0,{airborne:!!p.position.airborne});
   }
 }
 function updateGuestMonsters(dt){for(const m of state.monsters){m.flash=Math.max(0,m.flash-dt);m.group.position.lerp(new THREE.Vector3(m.x,m.y||0,m.z),1-Math.exp(-dt*14));m.group.rotation.y=angleLerp(m.group.rotation.y,m.netRotation||0,Math.min(1,dt*14));if(m.dead){m.deadT+=dt;m.group.rotation.x=-Math.min(1,m.deadT/.5)*Math.PI/2;}const distance=Math.hypot(m.x-P.pos.x,m.z-P.pos.z);setMonsterDetail(m,distance,touchDevice||graphicsMode==='performance');animateMonster(m,dt,(touchDevice||graphicsMode==='performance')&&distance>(touchDevice?24:35));}}

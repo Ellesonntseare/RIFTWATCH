@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
-import {heroMotionClips,createHeroMotion} from '../public/js/hero-motion.js';
+import {heroMotionClips,createHeroMotion,MOVEMENT_PREVIEWS} from '../public/js/hero-motion.js';
 import {HEROES} from '../public/js/roster.js';
 import {loadMonsterModels,buildMonster,animateMonster,MONSTER_TYPES} from '../public/js/monsters.js';
 
@@ -28,22 +28,31 @@ if (typeof document === 'undefined') globalThis.document = {
 };
 
 async function asset(name){const delivery='models/web/'+name;const file=process.env.RIFTWATCH_WEB_MODELS==='1'&&await fs.access(delivery).then(()=>true,()=>false)?delivery:'models/'+name;const bytes=await fs.readFile(file),loader=new GLTFLoader();loader.register(()=>({name:'GeometryOnlyTest',loadTexture:()=>Promise.resolve(new THREE.Texture())}));return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');}
-const soldier=await asset('futuristic_soldier_free.glb');
+const soldier=await asset('futuristic_soldier_free.glb'),movementPack=await asset('mixamo-movement-pack.glb');
 for(const hero of HEROES)test((hero.role||hero.name)+' walks, runs, stops and keeps boot soles on the ground',async()=>{
-  const template=await asset(hero.file);const clips=await heroMotionClips(hero.file,template.scene,soldier);
+  const template=await asset(hero.file);const clips=await heroMotionClips(hero.file,template.scene,soldier,movementPack,true);
   assert(clips.walk?.tracks.length>=6,'retargeted walking leg tracks exist');assert(clips.run?.tracks.length>=6);
+  for(const [move] of MOVEMENT_PREVIEWS)assert(clips[move]?.tracks.length>=20,move+' transfers to '+hero.role);
   const model=clone(template.scene),discard=[];model.traverse(o=>{if(o.isMesh&&/floor/i.test(o.name))discard.push(o);});discard.forEach(o=>o.removeFromParent());
   const root=new THREE.Group();root.add(model);root.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(model),scale=1.8/(box.max.y-box.min.y);model.scale.multiplyScalar(scale);model.position.y=-box.min.y*scale;root.updateMatrixWorld(true);
   const leg=model.getObjectByName(clips.walk.tracks[0].name.split('.')[0]),idle=leg.quaternion.clone();
+  const stuntArm=hero.id==='stunt'?model.getObjectByName('mixamorigLeftArm'):null,bindArm=stuntArm?.quaternion.clone();
   const motion=createHeroMotion(model,root,clips);
+  assert(motion.play('jump'),'jump can start on the operator');
+  for(let i=0;i<15;i++)motion(1/30,false,0,{airborne:true});
+  for(let i=0;i<70;i++)motion(1/30,false,0);
   for(const speed of [4,8]){
     const rotations=[];
     for(let i=0;i<35;i++){motion(1/30,true,speed);rotations.push(leg.quaternion.clone());const bottom=new THREE.Box3().setFromObject(model,true).min.y;assert(Math.abs(bottom)<.035,'boot soles stay within 3.5 cm of the floor: '+bottom);}
     assert(rotations.some(q=>q.angleTo(rotations[0])>.1),'legs change pose during '+(speed===4?'walk':'run'));
   }
   for(let i=0;i<15;i++)motion(1/30,false,0);
-  assert(leg.quaternion.angleTo(idle)<.001,'stopping restores the standing pose');
+  if(hero.id==='stunt'){
+    assert(clips.idle?.tracks.length>=20,'stunt skin has a standing pose');
+    assert(stuntArm.quaternion.angleTo(bindArm)>.5,'stunt mannequin lowers its arm from the T-pose');
+  }
+  else assert(leg.quaternion.angleTo(idle)<.001,'stopping restores the standing pose');
   root.position.y=3;motion(1/30,false,0);assert(Math.abs(new THREE.Box3().setFromObject(model,true).min.y-3)<.035,'grounding follows the character elevation');
 });
 test('every mobile enemy has a working locomotion clip; stationary defenders do not translate',async()=>{

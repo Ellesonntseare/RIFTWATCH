@@ -99,7 +99,7 @@ function attachMultiplayer(server){
       }
       if(m.type==='position'&&vector(m.pos)&&Number.isFinite(m.yaw)&&Number.isFinite(m.hp)){
         const duelPlayer=room.duel?.players.get(peer.id);
-        peer.position={pos:m.pos,yaw:m.yaw,pitch:Number.isFinite(m.pitch)?Math.max(-1.5,Math.min(1.5,m.pitch)):0,weapon:m.weapon===1?1:0,aiming:!!m.aiming,hp:duelPlayer?duelPlayer.hp:Math.max(0,Math.min(500,m.hp)),active:!!m.active,moving:!!m.moving,speed:Number.isFinite(m.speed)?Math.max(0,Math.min(20,m.speed)):0};
+        peer.position={pos:m.pos,yaw:m.yaw,pitch:Number.isFinite(m.pitch)?Math.max(-1.5,Math.min(1.5,m.pitch)):0,weapon:m.weapon===1?1:0,aiming:!!m.aiming,hp:duelPlayer?duelPlayer.hp:Math.max(0,Math.min(500,m.hp)),active:!!m.active,moving:!!m.moving,speed:Number.isFinite(m.speed)?Math.max(0,Math.min(20,m.speed)):0,airborne:!!m.airborne};
         broadcast(room,'position',{id:peer.id,position:peer.position},peer.id);return;
       }
       if(m.type==='duel-fire'&&room.duel&&!room.duel.winner&&vector(m.from)&&vector(m.to)){

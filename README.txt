@@ -55,3 +55,11 @@ DEVELOPMENT
 npm test
 Source: public/js/. Server: server.js and multiplayer-server.cjs.
 Progress and deferred work: PROGRESS.md. Character assets: CHARACTER-NOTES.md.
+
+MOVEMENT PREVIEWS
+Open OPERATORS in the main menu, select any operator, choose a movement, and tap PLAY MOVEMENT.
+The STUNT OPERATIVE is the untextured mannequin supplied with the Mixamo animations.
+Jump uses the supplied animation in third-person play; the attack and special movements are
+visual previews only and do not add melee damage, swimming, or grenade mechanics.
+To rebuild or expand the pack from compatible FBX files, use Blender with
+scripts/import-movement-pack.py; run it with -- OUTPUT.glb FIRST_SKIN.fbx OTHER_MOVE.fbx ...
