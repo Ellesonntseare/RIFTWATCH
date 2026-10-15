@@ -203,3 +203,89 @@
 }
 @media(max-width:410px) {#menu .rw-topnav {gap:8px}#menu .rw-top-link {font-size:8px}#menu .rw-title h1 {font-size:34px}}
 @media(prefers-reduced-motion:reduce) {#menu .modebtn {transition:none!important}}
+
+
+/* Unified operator selector, squad voice and mobile-first accessibility fixes */
+#menu.rw-menu .rw-change { border:1px solid #79c7d5a3;background:#071c2ba8;padding:10px 13px;color:#c6faff;cursor:pointer;font:10px Consolas,monospace;letter-spacing:1px;transition:border-color .2s,background .2s; }
+#menu.rw-menu .rw-change:hover {background:#153a4a;border-color:#a4f8ff}
+#menu.rw-menu .rw-operator-editor {display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,.8fr);gap:22px;align-items:start}
+#menu.rw-menu .rw-operator-choices {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px}
+#menu.rw-menu .rw-operator-option {min-width:0;display:flex;align-items:center;gap:11px;text-align:left;min-height:80px;padding:12px;border:1px solid #4c7b8e;background:#0a293a;color:#edf9fb;transition:background .18s,border-color .18s,transform .18s}
+#menu.rw-menu .rw-operator-option:hover {background:#184257;transform:translateY(-2px)}
+#menu.rw-menu .rw-operator-option.selected {background:#184958;border-color:#99e9f6;box-shadow:inset 3px 0 #93f5fc,0 0 18px #4bd1ec20}
+#menu.rw-menu .rw-operator-option-number {font:15px Consolas,monospace;color:#edcb70}
+#menu.rw-menu .rw-operator-option-copy {display:flex;flex:1;min-width:0;flex-direction:column;gap:7px}
+#menu.rw-menu .rw-operator-option-copy strong {font-size:11px;letter-spacing:.7px}
+#menu.rw-menu .rw-operator-option-copy small {font:9px Consolas,monospace;color:#a2bdc9}
+#menu.rw-menu .rw-operator-option-arrow {color:#86eff4;font-size:24px}
+#menu.rw-menu .rw-operator-edit-info {border:1px solid #4c7b8e;background:#061e2e;padding:20px;display:flex;flex-direction:column;gap:10px}
+#menu.rw-menu .rw-operator-edit-info>small {color:#91bdc9;font:10px Consolas,monospace;letter-spacing:1px}
+#menu.rw-menu .rw-operator-edit-info h3 {font-size:23px;margin:5px 0;color:#fff}
+#menu.rw-menu .rw-operator-edit-info>p {font:12px/1.6 "Segoe UI",sans-serif;color:#a6c0c9;margin:0 0 10px}
+#menu.rw-menu .rw-operator-edit-info label,#menu.rw-menu .rw-music-label {font:11px Consolas,monospace;letter-spacing:1px;color:#bfe9ef}
+#menu.rw-menu #rw-callsign {width:100%;min-height:44px;min-width:0;padding:10px 13px;border:1px solid #528c9f;background:#092b3c;color:white;font-size:15px;user-select:text}
+#menu.rw-menu #rw-operator-message {min-height:15px;margin:0;font:10px Consolas,monospace;color:#91f0f5}
+#menu.rw-menu .rw-voice-card {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#081f31;border:1px solid #426d85;padding:14px 17px;margin:12px 0 18px}
+#menu.rw-menu .rw-voice-title {display:flex;flex-direction:column;gap:5px;font:12px Consolas,monospace;letter-spacing:1px;color:#e5faff}
+#menu.rw-menu .rw-voice-title small {font:10px Consolas,monospace;letter-spacing:0;color:#8adbea}
+#menu.rw-menu .rw-voice-actions {display:flex;gap:8px;flex-wrap:wrap}
+#menu.rw-menu .rw-voice-actions button {min-height:40px;padding:9px 15px;font:11px Consolas,monospace;border:1px solid #6aa9bc;background:#11384b;color:#e6fcff}
+#menu.rw-menu .rw-voice-actions button:disabled {opacity:.45;cursor:not-allowed}
+#menu.rw-menu .rw-music-label {display:flex;align-items:center;justify-content:space-between;max-width:370px;margin:20px 0 8px}
+#menu.rw-menu #rw-music-range {width:min(100%,370px);min-height:32px;accent-color:#86eff4;display:block}
+body.rw-menu-visible #voice-controls,body.rw-menu-visible #music-controls {display:none!important}
+body.rw-game-visible.rw-room-joined #voice-controls {display:flex!important;position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));bottom:auto;left:auto;transform:none;gap:5px;padding:5px 8px;border:1px solid #5696a9;background:#061a27e8;box-shadow:0 6px 20px #0008;border-radius:8px;z-index:16;max-width:min(90vw,260px)}
+body.rw-game-visible:not(.rw-room-joined) #voice-controls {display:none!important}
+body.rw-game-visible.rw-room-joined #voice-controls button {font:10px Consolas,monospace;letter-spacing:0;padding:7px 8px;min-height:35px;color:#c8f8ff;background:#123648;border:1px solid #356c82;border-radius:5px}
+body.rw-game-visible.rw-room-joined #voice-controls #voice-status {display:none}
+body.rw-game-visible #voice-hud {display:none}
+@media(max-width:800px) {
+ #menu.rw-menu {height:100dvh!important;max-height:100dvh;min-width:0;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:thin;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+ #menu.rw-menu .rw-stage {min-width:0;min-height:min-content;height:auto}
+ #menu.rw-menu .rw-footer {position:sticky;bottom:0;z-index:5;flex:none;min-height:64px;box-shadow:0 -12px 26px #00101acc;padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+ #menu.rw-menu .rw-dialog {position:fixed;inset:0;padding:0;z-index:25}
+ #menu.rw-menu .rw-dialog-inner {width:100%;max-width:100%;height:100dvh;max-height:100dvh;border:0;border-top:1px solid #66c7d7;display:flex;flex-direction:column}
+ #menu.rw-menu .rw-dialog-panel {padding:14px 16px max(35px,env(safe-area-inset-bottom,0px));overflow-x:hidden;overflow-y:auto;min-height:0;flex:1;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+ #menu.rw-menu #maps {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;overflow:visible;max-height:none}
+ #menu.rw-menu #maps .mapbtn {position:relative;width:100%;min-width:0;min-height:155px;overflow:hidden}
+ #menu.rw-menu .rw-operator-editor {grid-template-columns:1fr}
+ #menu.rw-menu .rw-operator-choices {grid-template-columns:repeat(2,minmax(0,1fr))}
+ #menu.rw-menu .rw-operator-edit-info {padding:15px}
+ #menu.rw-menu .rw-topbar {position:relative;z-index:4}
+ body.rw-game-visible.rw-room-joined #voice-controls {top:calc(8px + env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));padding:4px}
+ body.rw-game-visible.rw-room-joined #voice-controls button {font-size:9px;min-height:31px;padding:6px}
+}
+@media(max-width:520px) {
+ #menu.rw-menu .rw-center {height:clamp(180px,28vh,270px);min-height:180px}
+ #menu.rw-menu .rw-stage {gap:12px}
+ #menu.rw-menu #rw-hero-stage {inset:-10px 8%}
+ #menu.rw-menu #maps {grid-template-columns:1fr}
+ #menu.rw-menu #maps .mapbtn {min-height:135px}
+ #menu.rw-menu .rw-topnav {width:100%;gap:6px;overflow-x:auto;scrollbar-width:none;justify-content:space-between}
+ #menu.rw-menu .rw-top-link {min-height:36px;flex:none;font:9px Consolas,monospace;letter-spacing:0}
+ #menu.rw-menu .rw-operator-choices {grid-template-columns:1fr}
+ #menu.rw-menu .rw-operator-option {min-height:58px}
+ #menu.rw-menu .rw-hero-caption strong {font-size:17px}
+ #menu.rw-menu #modes {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #menu.rw-menu #modes .modebtn {min-width:0;min-height:60px;padding:8px 10px}
+ #menu.rw-menu .rw-footer {grid-template-columns:auto 1fr;gap:8px;padding-left:4vw;padding-right:4vw}
+ #menu.rw-menu .rw-deploy {min-width:0;min-height:48px;width:100%}
+ #menu.rw-menu .rw-mission-panel {display:none}
+ #menu.rw-menu .rw-rank {display:none}
+ #menu.rw-menu .rw-right {gap:8px}
+ #menu.rw-menu .rw-mission-button {min-height:52px}
+ #menu.rw-menu .rw-topbar {gap:2px}
+ #menu.rw-menu .rw-dialog-inner>header h2 {font-size:19px}
+}
+@media(max-height:560px) and (min-width:801px) and (pointer:coarse) {
+ #menu.rw-menu {height:100dvh;overflow-y:auto;overflow-x:hidden}
+ #menu.rw-menu .rw-stage {flex:none;min-height:520px}
+ #menu.rw-menu .rw-footer {position:sticky;bottom:0;min-height:52px}
+ #menu.rw-menu .rw-dialog-inner {max-height:96dvh}
+ #menu.rw-menu .rw-dialog-panel {min-height:0;overflow-y:auto}
+}
+#menu.rw-menu #maps .mapbtn {transition:transform .23s ease,border-color .23s ease,filter .23s ease;animation:rw-map-enter .28s ease-out both}
+#menu.rw-menu #maps .mapbtn:hover:not(:disabled) {transform:translateY(-3px);border-color:#91ebfb;filter:brightness(1.09)}
+#menu.rw-menu #maps .mapbtn:disabled {opacity:.38}
+@keyframes rw-map-enter {from{opacity:.5;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){#menu.rw-menu #maps .mapbtn {animation:none;transition:none}}
