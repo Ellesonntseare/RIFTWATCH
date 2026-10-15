@@ -298,3 +298,14 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 .mapbtn small{color:#b6caca}.play-options>span{color:#a9ccc2}.hero-link span{color:#a1bab8}#lobby p{color:#c3dcd1}#menu .keys{color:#aabfc1}.deployment-label span{color:#9eb6b8}
 @media(max-width:900px) and (orientation:portrait){.modebtn small{font-size:10px}.play-options button{font-size:10px}.mapbtn small{font-size:11px}#menu .keys{font-size:10px}}
 @media(prefers-reduced-motion:reduce){#menu *{animation:none!important;transition:none!important}}
+
+/* HUD clarity: bigger numbers on phones, red pulsing bar when health is low. */
+#hpbox.low #hpfill{background:linear-gradient(90deg,#a31414,#ff5a4a)}
+#hpbox.low{border-color:#ff6b5e;animation:hp-low 1s ease-in-out infinite}
+@keyframes hp-low{0%,100%{box-shadow:0 0 0 #ff3b3000}50%{box-shadow:0 0 12px #ff3b30aa}}
+#ammo,#hptext{text-shadow:0 1px 3px #000,0 0 6px #000}
+@media(pointer:coarse),(max-width:900px){
+  #hpbox{height:22px;width:144px}#hptext{font-size:14px;top:1px}
+  #ammo{font-size:22px}#wname{font-size:10px}#c4txt{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){#hpbox.low{animation:none}}

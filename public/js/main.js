@@ -1199,7 +1199,7 @@ function updateHUD(dt) {
   // Text/DOM readouts refresh at 10 Hz; per-frame DOM writes cost frame time, especially on phones.
   const hudNow=performance.now();
   if(hudNow-lastHudText>=100){lastHudText=hudNow;
-  $('hpfill').style.width = Math.max(0, P.hp) / P.maxHp * 100 + '%'; $('hptext').textContent = Math.max(0, Math.ceil(P.hp));
+  $('hpfill').style.width = Math.max(0, P.hp) / P.maxHp * 100 + '%'; $('hptext').textContent = Math.max(0, Math.ceil(P.hp)); $('hpbox').classList.toggle('low', P.hp < 30 && !P.dead);
   $('ammo').textContent = P.reloading > 0 ? 'RELOADING' : `${P.ammo} / ${P.reserve}`;
   $('c4txt').textContent = `C4 x${P.c4}   ARMED ${state.c4s.filter(c => c.stuck).length} [F]`;
   $('camera-label').textContent = (state.cameraMode === 'first' ? 'FIRST PERSON' : state.cameraMode === 'wide' ? 'THIRD PERSON / WIDE' : 'THIRD PERSON / SHOULDER') + ' · V SWITCH';
