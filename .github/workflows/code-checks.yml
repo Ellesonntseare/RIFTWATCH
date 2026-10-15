@@ -18,7 +18,15 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - name: Fetch lightweight character and enemy models for animation tests
+        run: |
+          git lfs pull --include="models/web/*.glb,models/figure_360.glb" --exclude=""
+          for file in models/web/*.glb models/figure_360.glb; do
+            test "$(head -c 4 "$file")" = "glTF" || { echo "Missing LFS model: $file"; exit 1; }
+          done
       - name: Install dependencies
         run: npm ci
       - name: Run RIFTWATCH test suite
+        env:
+          RIFTWATCH_WEB_MODELS: '1'
         run: npm test
