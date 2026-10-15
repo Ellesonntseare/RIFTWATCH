@@ -326,15 +326,16 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 @media(prefers-reduced-motion:reduce){#hit.on{animation:none}}
 
 /* Map card previews: one simple scene per map, matching that map's sky/fog colours. CSS only. */
-:is(.map-island,.map-skibidi,.map-ep73,.map-outpost,.map-yard,.map-crypt) .map-art::before,
-:is(.map-island,.map-skibidi,.map-ep73,.map-outpost,.map-yard,.map-crypt) .map-art::after,
-.map-art:is(.map-island,.map-skibidi,.map-ep73,.map-outpost,.map-yard,.map-crypt)::before,
-.map-art:is(.map-island,.map-skibidi,.map-ep73,.map-outpost,.map-yard,.map-crypt)::after{display:none}
-:is(.map-island,.map-skibidi,.map-ep73,.map-outpost,.map-yard,.map-crypt) .map-art,
-.map-art:is(.map-island,.map-skibidi,.map-ep73,.map-outpost,.map-yard,.map-crypt){filter:none;opacity:.85}
+:is(.map-island,.map-skibidi,.map-ep73,.map-oldquarter,.map-outpost,.map-yard,.map-crypt) .map-art::before,
+:is(.map-island,.map-skibidi,.map-ep73,.map-oldquarter,.map-outpost,.map-yard,.map-crypt) .map-art::after,
+.map-art:is(.map-island,.map-skibidi,.map-ep73,.map-oldquarter,.map-outpost,.map-yard,.map-crypt)::before,
+.map-art:is(.map-island,.map-skibidi,.map-ep73,.map-oldquarter,.map-outpost,.map-yard,.map-crypt)::after{display:none}
+:is(.map-island,.map-skibidi,.map-ep73,.map-oldquarter,.map-outpost,.map-yard,.map-crypt) .map-art,
+.map-art:is(.map-island,.map-skibidi,.map-ep73,.map-oldquarter,.map-outpost,.map-yard,.map-crypt){filter:none;opacity:.85}
 .map-island .map-art,.map-art.map-island{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),radial-gradient(ellipse 34% 16% at 66% 84%,#2f6a47 0 62%,transparent 63%),radial-gradient(ellipse 62% 34% at 42% 96%,#3f7a55 0 62%,transparent 63%),linear-gradient(180deg,#86b7c0 0 56%,#4f8e9a 57% 100%)}
 .map-skibidi .map-art,.map-art.map-skibidi{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#1a2536 0 10px,transparent 10px 26px) 6px 100%/100% 32% no-repeat,repeating-linear-gradient(90deg,#26354a 0 16px,transparent 16px 31px) 0 100%/100% 50% no-repeat,linear-gradient(180deg,#5d6f95,#8794b0 75%)}
 .map-ep73 .map-art,.map-art.map-ep73{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#2a1f1f 0 18px,transparent 18px 34px) 0 100%/100% 52% no-repeat,repeating-linear-gradient(90deg,#3b2a27 0 11px,transparent 11px 29px) 9px 100%/100% 34% no-repeat,linear-gradient(180deg,#5b4a46,#c98a5a 80%)}
+.map-oldquarter .map-art,.map-art.map-oldquarter{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#614839 0 25px,transparent 25px 33px) 0 100%/100% 52% no-repeat,repeating-linear-gradient(90deg,#3b4449 0 17px,transparent 17px 49px) 12px 100%/100% 30% no-repeat,linear-gradient(180deg,#8095a4,#b5a28a 80%)}
 .map-outpost .map-art,.map-art.map-outpost{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#55636f 0 30px,transparent 30px 44px) 0 100%/100% 36% no-repeat,repeating-linear-gradient(90deg,#3f4c57 0 18px,transparent 18px 52px) 14px 100%/100% 52% no-repeat,linear-gradient(180deg,#9db0c4,#c5d2dd 80%)}
 .map-yard .map-art,.map-art.map-yard{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#a4552f 0 24px,transparent 24px 28px,#2f6b8a 28px 52px,transparent 52px 56px) 0 100%/100% 34% no-repeat,repeating-linear-gradient(90deg,#2f6b8a 0 24px,transparent 24px 28px,#a4552f 28px 52px,transparent 52px 56px) 14px 78%/100% 26% no-repeat,linear-gradient(180deg,#1c2430,#2c3a4a 80%)}
 .map-crypt .map-art,.map-art.map-crypt{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),radial-gradient(ellipse at 50% 112%,#6a1d16 0,transparent 60%),repeating-linear-gradient(90deg,#241211 0 16px,transparent 16px 58px) 0 100%/100% 85% no-repeat,#120808}

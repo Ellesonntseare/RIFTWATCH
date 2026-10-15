@@ -39,6 +39,9 @@ export async function dressMap(state, floorAt, buildCollision) {
       add('rabbit_-_realistic_3d_model_demo_free.glb',.65,-70,62,1.2,false),
     ]);
     state.wildlife=rabbits.slice(2).filter(Boolean).map((object,i)=>({object,y:object.position.y,phase:i*2.1}));
+    await Promise.all([
+      [-85,-60], [80,-70], [-10,95], [84,65], [-100,18], [34,90],
+    ].map(([x,z],i)=>add('blendswap_lowpoly_tree.glb',6.2,x,z,i*1.7,false)));
   }else if(state.mapKey==='outpost') {
     await Promise.all([
       add('office_is_old_abandoned_free.glb',3.65,-17,48,Math.PI/2),

@@ -1625,11 +1625,11 @@ function updateModeMenu(){
   network.render();
 }
 document.querySelectorAll('.modebtn').forEach(b=>b.addEventListener('click',()=>{state.gameMode=b.dataset.mode;updateModeMenu();}));
-const MAP_SELECTION_ORDER = ['outpost', 'yard', 'ep73', 'skibidi', 'crypt', 'island'];
+const MAP_SELECTION_ORDER = ['outpost', 'yard', 'oldquarter', 'ep73', 'skibidi', 'crypt', 'island'];
 for (const [order, key] of MAP_SELECTION_ORDER.filter(key => MAPS[key]).entries()) {
   const m = MAPS[key];
   const b = document.createElement('button'); b.className = 'mapbtn map-' + key; b.disabled = true; b.dataset.key = key;
-  b.innerHTML = `<span class="map-index">${String(order+1).padStart(2,"0")} / ${m.open||m.island ? "OPEN WORLD" : "COMBAT ZONE"}</span><span class="map-art"></span><b>${m.name}</b><small>${m.desc}</small><span class="deploy">DEPLOY ↗</span>`;
+  b.innerHTML = `<span class="map-index">${String(order+1).padStart(2,"0")} / ${(m.open&&!m.zone)||m.island ? "OPEN WORLD" : "COMBAT ZONE"}</span><span class="map-art"></span><b>${m.name}</b><small>${m.desc}</small><span class="deploy">DEPLOY ↗</span>`;
   b.addEventListener('click', () => startGame(key));
   $('maps').appendChild(b);
 }

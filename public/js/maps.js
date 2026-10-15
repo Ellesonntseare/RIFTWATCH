@@ -79,6 +79,7 @@ export const MAPS = {
   },
   skibidi: open('The Riftlands', 'Ruined city · hills · long sightlines', 'skibidi_toilet_77_map.glb', 700, { worldScale:.5, sky: 0x7d8fb0, fog: [0x8794b0, 60, 260] }),
   ep73: open('Ashfall District', 'Urban ruins · close quarters · street supplies', 'map_ep_73.glb', 300, {worldScale:1}),
+  oldquarter: open('Old Quarter', 'City street · close-range urban combat', 'old_quarter.glb', 70, {worldScale:1.4, zone:true, sky:0x8095a4, fog:[0x8095a4,45,150]}),
   outpost: buildOutpost(),
 
   yard: {
