@@ -19,6 +19,7 @@ test('rooms synchronize different heroes, host snapshots, damage actions and dis
     guest.send('position',{pos:[2,0,70],yaw:1,hp:160,active:true,moving:false,speed:0});const stopped=await host.next('position');assert.equal(stopped.position.moving,false);assert.equal(stopped.position.speed,0);
     host.send('snapshot',{snapshot:{monsters:[{id:1,hp:60}],barrels:[],wave:1}});assert.equal((await guest.next('snapshot')).snapshot.monsters[0].hp,60);
     guest.send('action',{action:{kind:'hit',id:1,damage:25,pos:[0,1,40]}});assert.equal((await host.next('action')).action.damage,25);
+    guest.send('action',{action:{kind:'melee'}});assert.equal((await host.next('action')).action.kind,'melee');
     host.send('direct',{to:position.id,event:'hurt',data:{damage:7}});assert.equal((await guest.next('hurt')).data.damage,7);
     host.send('direct',{to:position.id,event:'pickup',data:{kind:'med'}});assert.equal((await guest.next('pickup')).data.kind,'med');
     host.send('ping',{kind:'enemy',pos:[5,1,42]});const ping=await guest.next('ping');assert.equal(ping.kind,'enemy');assert.deepEqual(ping.pos,[5,1,42]);assert.equal(ping.name,'Serame');

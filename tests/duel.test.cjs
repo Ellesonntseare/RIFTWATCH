@@ -12,6 +12,24 @@ test('shot geometry accepts a body shot and rejects a miss and a blocked segment
   assert(!shotHit([0,1.2,0],[10,1.2,0],[5,0,3]));
   assert(!shotHit([0,1.2,0],[3,1.2,0],[5,0,0]));
 });
+test('duel melee needs range and facing, deals damage once per cooldown',async()=>{
+  const server=http.createServer(),{wss,rooms}=attachMultiplayer(server);await new Promise(r=>server.listen(0,'127.0.0.1',r));
+  const url='ws://127.0.0.1:'+server.address().port+'/multiplayer',peers=[];
+  try{
+    const host=await client(url),guest=await client(url);peers.push(host,guest);
+    host.send('create',{code:'MELEETEST'});const joined=await host.next('joined');
+    guest.send('join',{code:joined.code});await guest.next('joined');
+    host.send('start',{mapKey:'yard',spawn:[0,0,0],guestSpawn:[0,0,-2],gameMode:'duel'});await guest.next('start');await host.next('duel-state');await guest.next('duel-state');
+    const room=rooms.get(joined.code);for(const p of room.duel.players.values())p.shieldUntil=0;
+    host.send('position',{pos:[0,0,0],yaw:0,hp:100,active:true});await guest.next('position');
+    guest.send('position',{pos:[0,0,-2],yaw:0,hp:100,active:true});await host.next('position');
+    host.send('duel-melee');const hit=await guest.next('duel-melee');assert.equal(hit.id,joined.host);
+    const result=await guest.next('duel-state');assert.equal(result.players.find(p=>p.id!==joined.host).hp,65);
+    host.send('duel-melee');await new Promise(r=>setTimeout(r,100));assert.equal(room.duel.players.get(hit.target).hp,65,'cooldown prevents a second hit');
+    room.duel.players.get(joined.host).lastMelee=0;
+    host.send('position',{pos:[0,0,0],yaw:Math.PI,hp:100,active:true});await guest.next('position');host.send('duel-melee');await new Promise(r=>setTimeout(r,100));assert.equal(room.duel.players.get(hit.target).hp,65,'a target behind the attacker is safe');
+  }finally{for(const p of peers)p.ws.terminate();await new Promise(r=>wss.close(r));await new Promise(r=>server.close(r));}
+});
 test('duel requires two players and server controls hits, score and respawn',async()=>{
   const server=http.createServer(),{wss,rooms}=attachMultiplayer(server);await new Promise(r=>server.listen(0,'127.0.0.1',r));
   const url='ws://127.0.0.1:'+server.address().port+'/multiplayer',peers=[];

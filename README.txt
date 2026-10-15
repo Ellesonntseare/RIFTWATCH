@@ -20,13 +20,13 @@ WASD or arrow keys: move. Mouse: look. Shift: sprint. Space: jump.
 Left mouse: fire. Hold right mouse or press C: aim. R: reload.
 Scope View in the deployment settings switches the dark circular scope surround on or off.
 Performance is the default on PC and phone: it reduces distant animation, lights and effect particles. Quality restores the fuller PC lighting and effects and raises render resolution; on phones it raises resolution while keeping shadows off.
-1 / 2 / Q / mouse wheel: switch weapon. G: throw C4. F: detonate.
+1 / 2 / Q / mouse wheel: switch weapon. X: melee attack. G: throw C4. F: detonate.
 E: interact, hold for relay recovery/extraction, pick up a ground gun.
 V: shoulder / wide / first-person POV. Esc: pause. M: mute game audio.
 Menus use original soft sci-fi clicks and a distinct deployment confirmation; M also mutes these sounds during gameplay.
 Click RESUME / CAPTURE MOUSE after loading. Continuous turning requires browser pointer lock.
 Esc releases the mouse and pauses. If capture is blocked, open the game in Chrome or Edge.
-On a phone, use the left joystick to move and drag the right side to look. Hold FIRE, AIM, JUMP or RUN. Hold the HOLD E button to recover data or extract; tap it to pick up a gun or open a cache. Use RELOAD, SWAP, C4 and VIEW as needed. Tap C4 again after it arms to detonate. The HUD rearranges when the phone rotates; no landscape button is needed.
+On a phone, use the left joystick to move and drag the right side to look. Hold FIRE, AIM, JUMP or RUN; tap HIT for a close-range melee attack. Hold the HOLD E button to recover data or extract; tap it to pick up a gun or open a cache. Use RELOAD, SWAP, C4 and VIEW as needed. Tap C4 again after it arms to detonate. The HUD rearranges when the phone rotates; no landscape button is needed.
 
 SUPPLIES
 Green-cross medkits restore 55 health. Walk over medkits, ammo and power-ups.
@@ -59,7 +59,7 @@ Progress and deferred work: PROGRESS.md. Character assets: CHARACTER-NOTES.md.
 MOVEMENT PREVIEWS
 Open OPERATORS in the main menu, select any operator, choose a movement, and tap PLAY MOVEMENT.
 The STUNT OPERATIVE is the untextured mannequin supplied with the Mixamo animations.
-Jump uses the supplied animation in third-person play; the attack and special movements are
-visual previews only and do not add melee damage, swimming, or grenade mechanics.
+Jump, rifle fire, C4 throws, and five cycling melee moves use the supplied animations in third-person play.
+Melee hits one nearby target after a short windup; swimming remains a visual preview.
 To rebuild or expand the pack from compatible FBX files, use Blender with
 scripts/import-movement-pack.py; run it with -- OUTPUT.glb FIRST_SKIN.fbx OTHER_MOVE.fbx ...

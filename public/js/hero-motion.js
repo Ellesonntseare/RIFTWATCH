@@ -10,6 +10,7 @@ export const MOVEMENT_PREVIEWS=[
   ['fireRifle','Firing Rifle'],['strafe','Strafe'],['startWalk','Start Walking'],['throw','Throw Grenade'],
   ['swim','Swimming'],['flex','Mutant Flexing Muscles'],['punchBag','Punching Bag']
 ];
+export const COMBAT_MOVES=['punch','elbow','kneeCombo','dropKick','daggers','fireRifle','throw'];
 // GLTFLoader strips colons from Mixamo names when it creates animation bindings.
 const canonical=name=>name.replace(/^mixamorig\d*[:_]?/i,'').replace(/^Bind_/i,'').replace(/(?:_\d+)+$/,'').toLowerCase();
 function firstSkin(root){let skin;root.traverse(o=>{if(!skin&&o.isSkinnedMesh)skin=o;});return skin;}
@@ -26,7 +27,7 @@ export async function heroMotionClips(file,targetTemplate,sourceTemplate=null,mo
     target.updateMatrixWorld(true);
     const result={};
     const soldierModes=[['walk','walk'],['run','run']];
-    const movementModes=full?MOVEMENT_PREVIEWS:MOVEMENT_PREVIEWS.slice(0,1);
+    const movementModes=full?MOVEMENT_PREVIEWS:MOVEMENT_PREVIEWS.filter(([mode])=>mode==='jump'||COMBAT_MOVES.includes(mode));
     for(const [asset,modes] of [[donor,soldierModes],...(movementDonor?[[movementDonor,movementModes]]:[])]){
       const actor=clone(asset.scene);actor.updateMatrixWorld(true);
       const targetSkin=firstSkin(target),sourceSkin=firstSkin(actor);if(!targetSkin||!sourceSkin)continue;
@@ -65,12 +66,13 @@ export function createHeroMotion(model,root,clips){
   for(const [name,clip]of Object.entries(clips))actions[name]=mixer.clipAction(clip);
   const groundFeet=createFootGrounding(model,root);
   let active=null,oneShot=null,remaining=0,wasAirborne=false;
-  function play(name){
+  function play(name,duration){
     const action=actions[name];if(!action)return false;
     if(active){actions[active].fadeOut(.1);active=null;}
     if(oneShot)actions[oneShot].fadeOut(.1);
     action.reset().setLoop(THREE.LoopOnce,1).setEffectiveWeight(1).fadeIn(.1).play();
-    oneShot=name;remaining=clips[name].duration;return true;
+    action.timeScale=duration?clips[name].duration/duration:1;
+    oneShot=name;remaining=duration||clips[name].duration;return true;
   }
   const update=(dt,moving,speed,{airborne=false}={})=>{
     if(airborne&&!wasAirborne)play('jump');

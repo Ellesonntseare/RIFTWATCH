@@ -215,6 +215,7 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 .touch-btn.touch-use{border-color:#b5f7d5}
 .touch-btn.pressed{background:#8be9c6;color:#08252b;transform:scale(.95)}
 .touch-fire{width:78px;height:78px;right:max(22px,env(safe-area-inset-right));bottom:max(28px,env(safe-area-inset-bottom));background:#954b44e8;border-color:#ffb5a3}.touch-fire svg{width:50%;height:50%}.touch-fire span{font-size:10px}
+.touch-melee{right:172px;bottom:150px;border-color:#ffb5a3;background:#68403edd}
 .touch-aim{right:max(31px,env(safe-area-inset-right));bottom:120px}.touch-jump{right:108px;bottom:123px}.touch-run{left:160px;bottom:26px}.touch-reload{right:110px;bottom:34px}.touch-swap{right:170px;bottom:29px}.touch-use{right:172px;bottom:91px}.touch-c4{right:232px;bottom:30px}.touch-pov{right:228px;bottom:91px}.touch-pause{right:max(12px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:38px;height:38px;font-size:20px}
 .hud-editing #mobile-controls{z-index:12}.hud-editing #touch-look{pointer-events:none}.hud-editing #touch-stick,.hud-editing .touch-btn{outline:2px dashed #b6ffdf;outline-offset:3px;cursor:grab}.hud-editing #touch-stick.selected,.hud-editing .touch-btn.selected{outline:3px solid #fff46d}.hud-editing .touch-btn.pressed{transform:none}
 #hud-editor{position:fixed;top:max(5px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:13;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;max-width:calc(100vw - 16px);padding:7px 9px;background:#061c26ef;border:1px solid #a4ffe1;color:#dffcef;font:10px Consolas,monospace;pointer-events:auto;touch-action:manipulation}
@@ -331,6 +332,7 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 #squad-ping{position:absolute;z-index:8;min-width:75px;max-width:190px;padding:5px 8px;border:1px solid #99e4ff;background:#0b2c3de6;color:#d8f6ff;text-align:center;font:bold 10px Consolas,monospace;white-space:nowrap;pointer-events:none;transform:translate(-50%,-100%);text-shadow:0 1px 3px #001b28}
 .touch-ping{right:284px;bottom:91px;border-color:#8bdfff}
 @media(pointer:coarse) and (orientation:portrait){.touch-ping{right:14px;bottom:215px}}
+@media(pointer:coarse) and (orientation:portrait){.touch-melee{right:142px;bottom:140px}}
 @media(prefers-reduced-motion:reduce){#hit.on{animation:none}}
 
 /* Map card previews: one simple scene per map, matching that map's sky/fog colours. CSS only. */

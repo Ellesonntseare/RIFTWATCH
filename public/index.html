@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>RIFTWATCH</title>
 <!-- The cinematic home screen is the entry point. Operator selection lives in its own pane. -->
-<link rel="stylesheet" href="/style.css?v=20261015-room-chat">
+<link rel="stylesheet" href="/style.css?v=20261015-combat">
 <link rel="stylesheet" href="/menu-cinematic.css?v=20261015-operator-swipe">
-<script type="importmap">{"imports": {"three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/three-mesh-bvh/build/index.module.js", "/js/arm-ik.js": "/js/arm-ik.js?v=20261015-resolution-fix", "/js/audio.js": "/js/audio.js?v=20261015-resolution-fix", "/js/foot-grounding.js": "/js/foot-grounding.js?v=20261015-resolution-fix", "/js/hero-motion.js": "/js/hero-motion.js?v=20261015-resolution-fix", "/js/hero-preview.js": "/js/hero-preview.js?v=20261015-resolution-fix", "/js/hero-selection.js": "/js/hero-selection.js?v=20261015-resolution-fix", "/js/hero-weapon.js": "/js/hero-weapon.js?v=20261015-resolution-fix", "/js/hero.js": "/js/hero.js?v=20261015-no-kai", "/js/main.js": "/js/main.js?v=20261015-room-chat", "/js/maps.js": "/js/maps.js?v=20261015-resolution-fix", "/js/monsters.js": "/js/monsters.js?v=20261015-resolution-fix", "/js/network.js": "/js/network.js?v=20261015-room-chat", "/js/operations.js": "/js/operations.js?v=20261015-resolution-fix", "/js/personal-head.js": "/js/personal-head.js?v=20261015-resolution-fix", "/js/roster.js": "/js/roster.js?v=20261015-no-kai", "/js/scenery.js": "/js/scenery.js?v=20261015-resolution-fix", "/js/voice.js": "/js/voice.js?v=20261015-resolution-fix", "/js/wardrobe.js": "/js/wardrobe.js?v=20261015-resolution-fix", "/js/radar.js": "/js/radar.js?v=20261015-resolution-fix", "/js/terrain.js": "/js/terrain.js?v=20261015-resolution-fix"}}</script>
+<script type="importmap">{"imports": {"three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/three-mesh-bvh/build/index.module.js", "/js/arm-ik.js": "/js/arm-ik.js?v=20261015-resolution-fix", "/js/audio.js": "/js/audio.js?v=20261015-resolution-fix", "/js/foot-grounding.js": "/js/foot-grounding.js?v=20261015-resolution-fix", "/js/hero-motion.js": "/js/hero-motion.js?v=20261015-combat", "/js/hero-preview.js": "/js/hero-preview.js?v=20261015-resolution-fix", "/js/hero-selection.js": "/js/hero-selection.js?v=20261015-resolution-fix", "/js/hero-weapon.js": "/js/hero-weapon.js?v=20261015-resolution-fix", "/js/hero.js": "/js/hero.js?v=20261015-combat", "/js/main.js": "/js/main.js?v=20261015-combat", "/js/maps.js": "/js/maps.js?v=20261015-resolution-fix", "/js/monsters.js": "/js/monsters.js?v=20261015-resolution-fix", "/js/network.js": "/js/network.js?v=20261015-combat", "/js/operations.js": "/js/operations.js?v=20261015-resolution-fix", "/js/personal-head.js": "/js/personal-head.js?v=20261015-resolution-fix", "/js/roster.js": "/js/roster.js?v=20261015-no-kai", "/js/scenery.js": "/js/scenery.js?v=20261015-resolution-fix", "/js/voice.js": "/js/voice.js?v=20261015-resolution-fix", "/js/wardrobe.js": "/js/wardrobe.js?v=20261015-resolution-fix", "/js/radar.js": "/js/radar.js?v=20261015-resolution-fix", "/js/terrain.js": "/js/terrain.js?v=20261015-resolution-fix"}}</script>
 </head>
 <body>
 <div id="hud" class="hidden">
@@ -38,7 +38,7 @@
   <div class="play-options"><span>GRAPHICS</span><button class="graphicsbtn sel" data-graphics="performance">PERFORMANCE</button><button class="graphicsbtn" data-graphics="quality">QUALITY</button><span>CAMERA</span><button class="povbtn sel" data-pov="shoulder">THIRD PERSON</button><button class="povbtn" data-pov="wide">WIDE VIEW</button><button class="povbtn" data-pov="first">FIRST PERSON</button><span>SCOPE VIEW</span><button class="scopebtn sel" data-scope="on">DARK RING</button><button class="scopebtn" data-scope="off">OFF</button><span>DIFFICULTY</span><button class="difficultybtn sel" data-difficulty="relaxed">RELAXED</button><button class="difficultybtn" data-difficulty="standard">STANDARD</button></div>
   <div id="lobby"><div class="lobby-heading">ONLINE CO-OP <span id="room-code"></span></div><div class="lobby-controls"><input id="player-name" aria-label="Player name" maxlength="24" placeholder="Your name"><input id="create-code" aria-label="Choose your room code" maxlength="16" autocomplete="off" placeholder="CHOOSE ROOM CODE"><button id="create-room">CREATE ROOM</button><input id="join-code" aria-label="Friend's room code" maxlength="16" autocomplete="off" placeholder="FRIEND'S CODE"><button id="join-room">JOIN ROOM</button><button id="copy-invite" class="hidden">SHARE INVITE LINK</button><button id="leave-room" class="hidden">LEAVE ROOM</button></div><p id="lobby-status">Choose a 4–16 character code, or enter your friend's code. Up to four players.</p><p id="lobby-players"></p></div>
   <div id="maps"></div>
-  <p class="keys">WASD / arrows move &middot; Move mouse to look &middot; Shift sprint &middot; Space jump &middot; LMB fire &middot; RMB / C aim &middot; R reload &middot; 1/2/wheel switch gun &middot; G throw C4 &middot; F detonate<br>E hold to recover / extract · E open mystery cache · V switch POV · M mute · Walk over green-cross medkits to heal</p>
+  <p class="keys">WASD / arrows move &middot; Move mouse to look &middot; Shift sprint &middot; Space jump &middot; LMB fire &middot; X melee &middot; RMB / C aim &middot; R reload &middot; 1/2/wheel switch gun &middot; G throw C4 &middot; F detonate<br>E hold to recover / extract · E open mystery cache · V switch POV · M mute · Walk over green-cross medkits to heal</p>
 </div>
 
 <div id="map-loading" class="overlay hidden" aria-label="Preparing map" aria-busy="true">
@@ -55,6 +55,7 @@
 <div id="mobile-controls" class="hidden" aria-label="Touch game controls">
   <svg class="touch-icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <symbol id="icon-fire" viewBox="0 0 32 32"><circle cx="16" cy="16" r="9"/><circle cx="16" cy="16" r="3"/><path d="M16 2v7m0 14v7M2 16h7m14 0h7"/></symbol>
+    <symbol id="icon-melee" viewBox="0 0 32 32"><path d="M7 24V13l3-3 3 3V7l3-2 2 2v5l2-2 3 2v3l2-1 2 2v8l-4 4H12Z"/></symbol>
     <symbol id="icon-aim" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11"/><path d="M16 3v8m0 10v8M3 16h8m10 0h8"/></symbol>
     <symbol id="icon-jump" viewBox="0 0 32 32"><path d="M16 26V5m-8 8 8-8 8 8M6 28h20"/></symbol>
     <symbol id="icon-run" viewBox="0 0 32 32"><circle cx="20" cy="5" r="2"/><path d="m17 11-5 4 6 3 4-3m-4 3-2 9m-3-12-6 2m11 1 7 5m-20 5h22"/></symbol>
@@ -68,7 +69,7 @@
   </svg>
   <div id="touch-look" aria-label="Drag to look around"></div>
   <div id="touch-stick" aria-label="Movement joystick"><div id="touch-stick-knob"></div></div>
-  <button class="touch-btn touch-fire" data-touch="fire" aria-label="Fire"><svg><use href="#icon-fire"/></svg><span>FIRE</span></button><button class="touch-btn touch-aim" data-touch="aim" aria-label="Aim"><svg><use href="#icon-aim"/></svg><span>AIM</span></button><button class="touch-btn touch-jump" data-touch="jump" aria-label="Jump"><svg><use href="#icon-jump"/></svg><span>JUMP</span></button><button class="touch-btn touch-run" data-touch="run" aria-label="Sprint"><svg><use href="#icon-run"/></svg><span>RUN</span></button>
+  <button class="touch-btn touch-fire" data-touch="fire" aria-label="Fire"><svg><use href="#icon-fire"/></svg><span>FIRE</span></button><button class="touch-btn touch-melee" data-touch="melee" aria-label="Melee attack"><svg><use href="#icon-melee"/></svg><span>HIT</span></button><button class="touch-btn touch-aim" data-touch="aim" aria-label="Aim"><svg><use href="#icon-aim"/></svg><span>AIM</span></button><button class="touch-btn touch-jump" data-touch="jump" aria-label="Jump"><svg><use href="#icon-jump"/></svg><span>JUMP</span></button><button class="touch-btn touch-run" data-touch="run" aria-label="Sprint"><svg><use href="#icon-run"/></svg><span>RUN</span></button>
   <button class="touch-btn touch-reload" data-touch="reload" aria-label="Reload"><svg><use href="#icon-reload"/></svg><span>RELOAD</span></button><button class="touch-btn touch-swap" data-touch="swap" aria-label="Swap weapon"><svg><use href="#icon-swap"/></svg><span>SWAP</span></button><button class="touch-btn touch-use" data-touch="use" aria-label="Hold E to interact, recover data or extract"><svg><use href="#icon-use"/></svg><span>HOLD</span></button><button class="touch-btn touch-c4" data-touch="c4" aria-label="Throw or detonate C4"><svg><use href="#icon-c4"/></svg><span>C4</span></button><button class="touch-btn touch-pov" data-touch="pov" aria-label="Switch camera view"><svg><use href="#icon-pov"/></svg><span>VIEW</span></button><button class="touch-btn touch-ping" data-touch="ping" aria-label="Ping target for squad"><svg><use href="#icon-ping"/></svg><span>PING</span></button><button class="touch-btn touch-pause" data-touch="pause" aria-label="Pause"><svg><use href="#icon-pause"/></svg><span>PAUSE</span></button>
 </div>
 <div id="hud-editor" class="hidden" aria-label="Customize touch HUD"><strong>CUSTOMIZE HUD</strong><span>Drag a control to move it. Tap to resize.</span><label>SIZE <input id="hud-size" type="range" min="60" max="160" value="100"></label><label>OPACITY <input id="hud-opacity" type="range" min="35" max="100" value="90"></label><button id="hud-reset">RESET</button><button id="hud-cancel">CANCEL</button><button id="hud-save">SAVE</button></div>
@@ -88,7 +89,7 @@
   <button id="shopnext">NEXT LEVEL &#9654;</button>
 </div>
 
-<div id="pause" class="overlay hidden"><h2>PAUSED</h2><p id="mouse-status">Click RESUME for continuous mouse look. Esc releases the mouse and pauses.</p><p class="keys">WASD / arrows move · Move mouse to look · E interact · V switch POV</p><button id="windowed">RESUME · CAPTURE MOUSE</button><button id="edit-touch-hud" class="hidden">CUSTOMIZE TOUCH HUD</button><button id="back-maps">← BACK TO MAPS</button><p class="keys">Move the mouse to turn the camera. Left click fires. Right click or C aims. Esc pauses.</p></div>
+<div id="pause" class="overlay hidden"><h2>PAUSED</h2><p id="mouse-status">Click RESUME for continuous mouse look. Esc releases the mouse and pauses.</p><p class="keys">WASD / arrows move · Move mouse to look · E interact · V switch POV</p><button id="windowed">RESUME · CAPTURE MOUSE</button><button id="edit-touch-hud" class="hidden">CUSTOMIZE TOUCH HUD</button><button id="back-maps">← BACK TO MAPS</button><p class="keys">Move the mouse to turn the camera. Left click fires. X attacks nearby enemies. Right click or C aims. Esc pauses.</p></div>
 
 <div id="over" class="overlay hidden">
   <h1 id="overtitle">YOU DIED</h1>
@@ -97,8 +98,8 @@
   <button id="tomenu">MENU</button>
 </div>
 
-<script type="module" src="/js/main.js?v=20261015-pickups-pings"></script>
-<script type="module" src="/js/menu-cinematic.js?v=20261015-operator-swipe"></script>
+<script type="module" src="/js/main.js?v=20261015-combat"></script>
+<script type="module" src="/js/menu-cinematic.js?v=20261015-combat"></script>
 </body>
 </html>
 

@@ -80,7 +80,7 @@ export function createNetwork(callbacks){
   if($('join-code').value)setTimeout(()=>{if(!code)join('join');},600);
   return {
     players,get id(){return id},get role(){return role},get code(){return code},
-    start:data=>send('start',data),action:action=>send('action',{action}),duelFire:data=>send('duel-fire',data),ping:data=>send('ping',data),
+    start:data=>send('start',data),action:action=>send('action',{action}),duelFire:data=>send('duel-fire',data),duelMelee:()=>send('duel-melee'),ping:data=>send('ping',data),
     direct:(to,event,data)=>send('direct',{to,event,data}),effect:effect=>send('effect',{effect}),
     tick(now,position,snapshot){if(!code)return;if(now-lastPosition>.08){lastPosition=now;send('position',position);}if(role==='host'&&snapshot&&now-lastState>.1){lastState=now;send('snapshot',{snapshot:snapshot()});}},
     render,

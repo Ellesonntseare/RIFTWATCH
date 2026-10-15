@@ -2,7 +2,8 @@ const {WebSocketServer,WebSocket}=require('ws');
 const {shotHit,TARGET_KILLS,RESPAWN_MS}=require('./duel-rules.cjs');
 const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi','island','oldquarter']);
 const ROOM_CODE=/^[A-Z0-9]{4,16}$/;
-const HEROES=new Set(['personal','tactical','vanguard','sentinel']);
+const HEROES=new Set(['personal','tactical','vanguard','sentinel','stunt']);
+const ATTACKS=new Set(['punch','elbow','kneeCombo','dropKick','daggers','fireRifle','throw']);
 const vector=p=>Array.isArray(p)&&p.length===3&&p.every(n=>Number.isFinite(n)&&Math.abs(n)<12000);
 
 function attachMultiplayer(server){
@@ -99,8 +100,20 @@ function attachMultiplayer(server){
       }
       if(m.type==='position'&&vector(m.pos)&&Number.isFinite(m.yaw)&&Number.isFinite(m.hp)){
         const duelPlayer=room.duel?.players.get(peer.id);
-        peer.position={pos:m.pos,yaw:m.yaw,pitch:Number.isFinite(m.pitch)?Math.max(-1.5,Math.min(1.5,m.pitch)):0,weapon:m.weapon===1?1:0,aiming:!!m.aiming,hp:duelPlayer?duelPlayer.hp:Math.max(0,Math.min(500,m.hp)),active:!!m.active,moving:!!m.moving,speed:Number.isFinite(m.speed)?Math.max(0,Math.min(20,m.speed)):0,airborne:!!m.airborne};
+        peer.position={pos:m.pos,yaw:m.yaw,pitch:Number.isFinite(m.pitch)?Math.max(-1.5,Math.min(1.5,m.pitch)):0,weapon:m.weapon===1?1:0,aiming:!!m.aiming,hp:duelPlayer?duelPlayer.hp:Math.max(0,Math.min(500,m.hp)),active:!!m.active,moving:!!m.moving,speed:Number.isFinite(m.speed)?Math.max(0,Math.min(20,m.speed)):0,airborne:!!m.airborne,attack:ATTACKS.has(m.attack)?m.attack:'',attackSeq:Number.isSafeInteger(m.attackSeq)&&m.attackSeq>=0?m.attackSeq:0};
         broadcast(room,'position',{id:peer.id,position:peer.position},peer.id);return;
+      }
+      if(m.type==='duel-melee'&&room.duel&&!room.duel.winner){
+        const attacker=room.duel.players.get(peer.id),victimPeer=[...room.peers.values()].find(p=>p.id!==peer.id),victim=room.duel.players.get(victimPeer?.id);
+        if(!attacker||!victim||!peer.position?.active||!victimPeer.position?.active||attacker.hp<=0||victim.hp<=0||now-(attacker.lastMelee||0)<650)return;
+        attacker.lastMelee=now;
+        const from=peer.position.pos,to=victimPeer.position.pos,dx=to[0]-from[0],dz=to[2]-from[2],distance=Math.hypot(dx,dz);
+        const facing=(-Math.sin(peer.position.yaw)*dx-Math.cos(peer.position.yaw)*dz)/Math.max(distance,.001);
+        if(distance>2.8||Math.abs(to[1]-from[1])>1.7||facing<.55||now<victim.shieldUntil)return;
+        victim.hp=Math.max(0,victim.hp-35);
+        broadcast(room,'duel-melee',{id:peer.id,target:victimPeer.id});
+        if(victim.hp===0){victim.deaths++;victim.respawnAt=now+RESPAWN_MS;attacker.kills++;if(attacker.kills>=TARGET_KILLS)room.duel.winner=peer.id;}
+        duelState(room);return;
       }
       if(m.type==='duel-fire'&&room.duel&&!room.duel.winner&&vector(m.from)&&vector(m.to)){
         const shooter=room.duel.players.get(peer.id),targetPeer=[...room.peers.values()].find(p=>p.id!==peer.id),target=room.duel.players.get(targetPeer?.id);
@@ -120,7 +133,7 @@ function attachMultiplayer(server){
       }
       if(m.type==='action'&&peer.id!==room.host&&m.action&&typeof m.action==='object'){
         const a=m.action;
-        if(!['hit','barrel','interact','pickup','explosion','shot','respawn'].includes(a.kind))return;
+        if(!['hit','barrel','interact','pickup','explosion','shot','respawn','melee'].includes(a.kind))return;
         if(a.damage!==undefined&&(!Number.isFinite(a.damage)||a.damage<0||a.damage>600))return;
         if(a.pos!==undefined&&!vector(a.pos))return;
         send(room.peers.get(room.host).ws,'action',{id:peer.id,action:a});return;

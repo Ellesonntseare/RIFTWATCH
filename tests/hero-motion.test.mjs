@@ -33,6 +33,8 @@ for(const hero of HEROES)test((hero.role||hero.name)+' walks, runs, stops and ke
   const template=await asset(hero.file);const clips=await heroMotionClips(hero.file,template.scene,soldier,movementPack,true);
   assert(clips.walk?.tracks.length>=6,'retargeted walking leg tracks exist');assert(clips.run?.tracks.length>=6);
   for(const [move] of MOVEMENT_PREVIEWS)assert(clips[move]?.tracks.length>=20,move+' transfers to '+hero.role);
+  const gameplay=await heroMotionClips(hero.file,template.scene,soldier,movementPack);
+  for(const move of ['punch','elbow','kneeCombo','dropKick','daggers','fireRifle','throw'])assert(gameplay[move]?.tracks.length>=20,move+' is available during matches');
   const model=clone(template.scene),discard=[];model.traverse(o=>{if(o.isMesh&&/floor/i.test(o.name))discard.push(o);});discard.forEach(o=>o.removeFromParent());
   const root=new THREE.Group();root.add(model);root.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(model),scale=1.8/(box.max.y-box.min.y);model.scale.multiplyScalar(scale);model.position.y=-box.min.y*scale;root.updateMatrixWorld(true);
