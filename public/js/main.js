@@ -1366,9 +1366,14 @@ async function startGame(key,setup=null) {
   }else if(network.role==='guest'){state.wave=1;state.toSpawn=0;if(state.gameMode==='hunt')operations.startHunt();else operations.start(1);if(pendingSnapshot){applyCoopSnapshot(pendingSnapshot);pendingSnapshot=null;}}
   else{if(state.gameMode==='hunt')startHunt();else startWave(1);if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),gameMode:state.gameMode,difficulty:state.difficulty});}
   update(0);
-  showPause();
-  $('mouse-status').textContent=touchDevice?'Ready. Tap PLAY WITH TOUCH CONTROLS to begin.':'Ready. Click RESUME to capture the mouse and begin.';
-  $('windowed').textContent=touchDevice?'PLAY WITH TOUCH CONTROLS':'RESUME · CAPTURE MOUSE';
+  // Touch devices do not need pointer lock. Selecting a map should start the game immediately.
+  if(touchDevice) {
+    lock();
+  } else {
+    showPause();
+    $('mouse-status').textContent='Ready. Click RESUME to capture the mouse and begin.';
+    $('windowed').textContent='RESUME · CAPTURE MOUSE';
+  }
 }
 
 document.addEventListener('pointerlockchange', () => {
