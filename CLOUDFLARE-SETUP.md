@@ -23,7 +23,7 @@ Official routing guide: https://developers.cloudflare.com/cloudflare-one/network
 ## Start a room
 
 1. Everyone opens the same HTTPS game URL and chooses their own hero.
-2. One player clicks CREATE ROOM and shares the six-character room code.
+2. One player chooses a 4–16 letter or number code, clicks CREATE ROOM, and shares that code.
 3. Friends enter that code and click JOIN ROOM.
 4. The room host selects a map. All players load that map.
 5. Up to four people can share a room. The room host's browser simulates the enemies, missions and shared pickups. Keep that browser open and active; pausing the host pauses the shared world. If the host leaves, the room closes. There is no host migration or persistent saved room.

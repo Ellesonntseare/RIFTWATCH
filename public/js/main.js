@@ -6,7 +6,7 @@ import { createOperations } from './operations.js?v=20261015-pickups-pings';
 import { dressMap } from './scenery.js';
 import { buildHero } from './hero.js';
 import { selectedHero } from './roster.js';
-import { createNetwork } from './network.js?v=20261015-pickups-pings';
+import { createNetwork } from './network.js?v=20261015-room-chat';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MAPS } from './maps.js';
@@ -1456,6 +1456,7 @@ document.querySelectorAll('[data-touch]').forEach(button=>{
 });
 
 addEventListener('keydown', e => {
+  if(e.target?.tagName==='INPUT'||e.target?.tagName==='TEXTAREA')return;
   if (e.code === 'KeyM' && !e.repeat) { const muted = toggleAudio(); banner(muted ? 'AUDIO MUTED' : 'AUDIO ON'); }
   keys[e.code] = true;
   if ((e.code === 'Space'||e.code.startsWith('Arrow'))&&state.mode==='playing') e.preventDefault();
@@ -1620,7 +1621,7 @@ document.querySelectorAll('.difficultybtn').forEach(b=>b.addEventListener('click
 function updateModeMenu(){
   document.querySelectorAll('.modebtn').forEach(button=>button.classList.toggle('sel',button.dataset.mode===state.gameMode));
   document.querySelector('.lobby-heading').firstChild.textContent=state.gameMode==='duel'?'PRIVATE 1V1 ROOM ':state.gameMode==='hunt'?'ISLAND HUNT ROOM ':'ONLINE CO-OP ';
-  $('lobby-status').textContent=state.gameMode==='duel'?'Create a room, invite one friend, then choose a map. First to 5 kills wins.':state.gameMode==='hunt'?'Create a room and invite your friend. Hunt 30 monsters across the island.':'Play solo, or create a room and invite up to three friends.';
+  $('lobby-status').textContent=state.gameMode==='duel'?'Choose a room code, invite one friend, then select a map. First to 5 kills wins.':state.gameMode==='hunt'?'Choose a room code and invite your friend. Hunt 30 monsters across the island.':'Choose a room code, or enter your friend’s code. Up to four players.';
   document.querySelectorAll('.mapbtn').forEach(button=>button.classList.toggle('hidden',(button.dataset.key==='island')!==(state.gameMode==='hunt')));
   network.render();
 }

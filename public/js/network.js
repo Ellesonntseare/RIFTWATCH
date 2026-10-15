@@ -1,14 +1,17 @@
 import {selectedHero} from './roster.js';
 import {createRoomVoice} from './voice.js?v=20261015-voice-indicators';
+import {createRoomChat} from './room-chat.js';
 
 export function createNetwork(callbacks){
   let socket=null,id=null,role=null,code=null,lastPosition=0,lastState=0;
   const players=new Map(),$=id=>document.getElementById(id);
   function send(type,data={}){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}));}
   const voice=createRoomVoice({send,me:()=>id,inRoom:()=>!!code});
+  const chat=createRoomChat(message=>send('chat',{message}));
   function status(text){$('lobby-status').textContent=text;}
   function render(){
     $('room-code').textContent=code ? 'ROOM '+code : '';
+    chat.setRoom(code);
     $('leave-room').classList.toggle('hidden',!code);
     $('copy-invite')?.classList.toggle('hidden',!code);
     $('lobby-players').textContent=[...players.values()].map(p=>`${p.name}${p.id===id?' (you)':''}${p.id===callbacks.hostId?' · host':''}`).join(' / ');
@@ -43,13 +46,19 @@ export function createNetwork(callbacks){
         if(m.type==='voice-peers')voice.sync(m.players);
         if(m.type==='voice-signal')voice.signal(m.id,m.signal);
         if(m.type==='ping')callbacks.onPing?.(m);
+        if(m.type==='chat')chat.receive(m.name,m.message,m.id===id);
         if(m.type==='error')status(m.message);
         if(m.type==='closed'){voice.stop(false);role=null;code=null;players.clear();render();status(m.message);callbacks.onDisconnect?.();}
         if(m.type==='left'){role=null;code=null;players.clear();render();status('SOLO MODE / CHOOSE A MAP');}
       };
     });
   }
-  async function join(type){try{if(voice.enabled)voice.stop();await connect();const hero=selectedHero();send(type,{hero:hero.id,name:hero.name,code:$('join-code').value.trim()});}catch(e){status(e.message);}}
+  async function join(type){
+    const field=$(type==='create'?'create-code':'join-code');
+    const requested=field.value.trim().toUpperCase();
+    if(!/^[A-Z0-9]{4,16}$/.test(requested)){status('ENTER A 4–16 LETTER OR NUMBER ROOM CODE');field.focus?.();return;}
+    try{if(voice.enabled)voice.stop();await connect();const hero=selectedHero();send(type,{hero:hero.id,name:hero.name,code:requested});}catch(e){status(e.message);}
+  }
   $('create-room').onclick=()=>join('create');$('join-room').onclick=()=>join('join');
   $('leave-room').onclick=()=>{voice.stop();send('leave');role=null;code=null;players.clear();for(const b of document.querySelectorAll('.mapbtn'))b.disabled=false;render();};
   // Invite link: friends who open it get the room code filled in and join automatically.

@@ -17,7 +17,7 @@ test('duel requires two players and server controls hits, score and respawn',asy
   const url='ws://127.0.0.1:'+server.address().port+'/multiplayer',peers=[];
   try{
     const host=await client(url),guest=await client(url);peers.push(host,guest);
-    host.send('create');const joined=await host.next('joined');
+    host.send('create',{code:'DUELROOM'});const joined=await host.next('joined');
     host.send('start',{mapKey:'yard',spawn:[0,0,0],guestSpawn:[5,0,0],gameMode:'duel'});
     assert.match((await host.next('error')).message,/exactly two/);
     guest.send('join',{code:joined.code});const second=await guest.next('joined');await host.next('roster');

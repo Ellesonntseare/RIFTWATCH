@@ -1,7 +1,7 @@
 const {WebSocketServer,WebSocket}=require('ws');
-const crypto=require('node:crypto');
 const {shotHit,TARGET_KILLS,RESPAWN_MS}=require('./duel-rules.cjs');
-const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi','island']);
+const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi','island','oldquarter']);
+const ROOM_CODE=/^[A-Z0-9]{4,16}$/;
 const HEROES=new Set(['personal','tactical','vanguard','sentinel']);
 const vector=p=>Array.isArray(p)&&p.length===3&&p.every(n=>Number.isFinite(n)&&Math.abs(n)<12000);
 
@@ -45,10 +45,16 @@ function attachMultiplayer(server){
       if(m.type==='create'||m.type==='join'){
         let destination;
         if(m.type==='join'){
-          destination=rooms.get(String(m.code||'').toUpperCase().replace(/[^A-F0-9]/g,''));
+          const requested=String(m.code||'').trim().toUpperCase();
+          if(!ROOM_CODE.test(requested))return send(ws,'error',{message:'Use a 4–16 letter or number room code.'});
+          destination=rooms.get(requested);
           if(!destination)return send(ws,'error',{message:'Room not found. Check the code.'});
           if(destination.code===peer.code)return;
           if(destination.peers.size>=(destination.duel?2:4))return send(ws,'error',{message:destination.duel?'1v1 room full (2 players).':'Room full (4 players).'});
+        }else if(!ROOM_CODE.test(String(m.code||'').trim().toUpperCase())){
+          return send(ws,'error',{message:'Choose a 4–16 letter or number room code.'});
+        }else if(rooms.has(String(m.code).trim().toUpperCase())&&rooms.get(String(m.code).trim().toUpperCase()).host!==peer.id){
+          return send(ws,'error',{message:'That room code is taken. Choose another.'});
         }else if(rooms.size>=24&&rooms.get(peer.code)?.host!==peer.id){
           return send(ws,'error',{message:'Server full. Try again later.'});
         }
@@ -56,7 +62,8 @@ function attachMultiplayer(server){
         let room;
         if(m.type==='create'){
           if(rooms.size>=24)return send(ws,'error',{message:'Server full. Try again later.'});
-          let code;do{code=crypto.randomBytes(4).toString('hex').slice(0,6).toUpperCase();}while(rooms.has(code));
+          const code=String(m.code).trim().toUpperCase();
+          if(rooms.has(code))return send(ws,'error',{message:'That room code is taken. Choose another.'});
           room={code,host:peer.id,peers:new Map(),start:null,snapshot:null,duel:null};rooms.set(code,room);
         }else{room=destination;}
         peer.code=room.code;room.peers.set(peer.id,peer);send(ws,'joined',{code:room.code,host:room.host,role:peer.id===room.host?'host':'guest'});roster(room);
@@ -72,6 +79,12 @@ function attachMultiplayer(server){
         return;
       }
       if(m.type==='voice-config'){voiceConfig().then(iceServers=>send(ws,'voice-config',{iceServers}));return;}
+      if(m.type==='chat'){
+        const message=String(m.message||'').trim();
+        if(!message||message.length>240||/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(message))return;
+        if(now-(peer.lastChat||0)<500)return send(ws,'error',{message:'Wait a moment before sending another message.'});
+        peer.lastChat=now;broadcast(room,'chat',{id:peer.id,name:peer.name,message,time:now});return;
+      }
       if(m.type==='voice-ready'){peer.voice=!!m.enabled;voicePeers(room);return;}
       if(m.type==='voice-signal'&&peer.voice&&room.peers.get(m.to)?.voice&&m.signal&&JSON.stringify(m.signal).length<16000){send(room.peers.get(m.to).ws,'voice-signal',{id:peer.id,signal:m.signal});return;}
       if(m.type==='ping'){

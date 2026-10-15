@@ -4,9 +4,9 @@ function setup(){
   const elements=new Map(),maps=[{disabled:false},{disabled:false}];
   const document={getElementById(id){if(!elements.has(id))elements.set(id,{value:'',textContent:'',classList:{toggle(){}}});return elements.get(id);},querySelectorAll(){return maps;}};
   class Socket{static OPEN=1;constructor(){this.readyState=1;Socket.instance=this;queueMicrotask(()=>this.onopen());}send(){}close(){}receive(message){this.onmessage({data:JSON.stringify(message)});}}
-  const context={document,WebSocket:Socket,selectedHero:()=>({id:'personal',name:'Tester'}),createRoomVoice:()=>({stop(){},enabled:false}),location:{protocol:'http:',host:'localhost',search:''},URLSearchParams,setTimeout,clearTimeout};
+  const context={document,WebSocket:Socket,selectedHero:()=>({id:'personal',name:'Tester'}),createRoomVoice:()=>({stop(){},enabled:false}),createRoomChat:()=>({setRoom(){},receive(){}}),location:{protocol:'http:',host:'localhost',search:''},URLSearchParams,setTimeout,clearTimeout};
   vm.createContext(context);vm.runInContext(source,context);
-  let ready=true;const net=context.createNetwork({canSelectMap:()=>ready});
+  let ready=true;const net=context.createNetwork({canSelectMap:()=>ready});document.getElementById('create-code').value='TEAMONE';
   return {elements,maps,Socket,net,setReady(value){ready=value;}};
 }
 test('guest disconnect and room closure restore map selection without unlocking loading maps',async()=>{
