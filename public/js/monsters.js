@@ -78,8 +78,10 @@ function play(rig, name) {
   n.reset().fadeIn(0.2).play(); if (o) o.fadeOut(0.2); rig.cur = name;
 }
 
-export function animateMonster(m, dt) {
+export function animateMonster(m, dt, lowDetail=false) {
   const rig = m.group.userData.rig; if (!rig) return;
+  if(lowDetail){rig.animationDebt=(rig.animationDebt||0)+dt;if(rig.animationDebt<.12)return;dt=rig.animationDebt;rig.animationDebt=0;}
+  else if(rig.animationDebt){dt+=rig.animationDebt;rig.animationDebt=0;}
   const T = m.T;
   for (const mt of m.mats) if (mt.emissive) mt.emissive.setRGB(m.flash > 0 ? 0.9 : 0, m.flash > 0 ? 0.25 : 0, 0);
   if (m.dead) { if (rig.mixer && rig.cur !== 'death' && rig.actions.death) { play(rig, 'death'); rig.actions.death.setLoop(THREE.LoopOnce, 1); rig.actions.death.clampWhenFinished = true; } if (rig.mixer) rig.mixer.update(dt); return; }

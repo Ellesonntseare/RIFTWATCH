@@ -37,8 +37,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angleLerp = (a, b, t) => a + ((((b - a + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI) * t;
 
 // ------------------------------------------------------------------ renderer / scenes
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, touchDevice ? .7 : 1));
+const renderer = new THREE.WebGLRenderer({ antialias: !touchDevice });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -60,7 +60,6 @@ viewScene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.2));
 const viewSun = new THREE.DirectionalLight(0xffffff, 2); viewSun.position.set(1, 2, 1); viewScene.add(viewSun);
 
 const shotLight = new THREE.PointLight(0xffaa55, 0, 25, 2);   // constant light count => no shader recompiles
-scene.add(shotLight);
 
 function resizeGame() {
   renderer.setSize(innerWidth, innerHeight);
@@ -73,7 +72,7 @@ addEventListener('orientationchange', () => setTimeout(resizeGame, 100));
 // ------------------------------------------------------------------ state
 const state = {
   mode: 'menu', paused: false, time: 0, mapKey: 'yard', map: null, world: null,
-  colliders: [], wallMeshes: [], barrels: [], monsters: [], c4s: [], particles: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0,
+  colliders: [], wallMeshes: [], barrels: [], monsters: [], c4s: [], particles: [], bloodStains: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0,
   wave: 0, toSpawn: 0, spawnTimer: 0, inter: 0, score: 0, kills: 0,
   hurt: 0, shake: 0, hitT: 0, hitKill: false, flashT: 0, bannerT: 0,
 };
@@ -154,7 +153,7 @@ function buildGuns() {
   flashMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.25),
     new THREE.MeshBasicMaterial({ map: glowTexture(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
   flashMesh.visible = false; gunPivot.add(flashMesh);
-  muzzleLight = new THREE.PointLight(0xffaa44, 0, 3, 2); gunPivot.add(muzzleLight);
+  muzzleLight = new THREE.PointLight(0xffaa44, 0, 3, 2); if(!touchDevice&&graphicsMode==='quality')gunPivot.add(muzzleLight);
   setWeaponVisual(0);
 }
 function setWeaponVisual(i) {
@@ -224,7 +223,7 @@ function loadMap(key) {
   const map = MAPS[key]; state.map = map; state.collMesh = null; state.extraCollMesh = null; state.waterMesh=null; state.nextMonsterId=0; state.sharedBarrelsInitialized=false; state.lastSharedShop=0;
   camera.far = Math.max(150, map.fog[2] + 30); camera.updateProjectionMatrix();
   const world = new THREE.Group(); scene.add(world); state.world = world;
-  Object.assign(state, { colliders: [], wallMeshes: [], barrels: [], monsters: [], c4s: [], particles: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0, projs: [], rings: [] });
+  Object.assign(state, { colliders: [], wallMeshes: [], barrels: [], monsters: [], c4s: [], particles: [], bloodStains: [], tracers: [], fx: [], fxLights: [], fxLightIdx: 0, projs: [], rings: [] });
 
   scene.background = new THREE.Color(map.sky);
   scene.fog = new THREE.Fog(map.fog[0], map.fog[1], map.fog[2]);
@@ -235,8 +234,8 @@ function loadMap(key) {
   sun.position.set(20, 45, 12); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -ext, right: ext, top: ext, bottom: -ext, near: 1, far: 120 });
   sun.shadow.bias = -0.0005; world.add(sun); world.add(sun.target); state.sun = sun;   // follows the player
-  for (const [x, y, z, col, inten] of map.lights) { const l = new THREE.PointLight(col, inten, 18, 2); l.position.set(x, y, z); world.add(l); }
-  for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xff8833, 0, 30, 2); world.add(l); state.fxLights.push(l); }
+  if(!touchDevice&&graphicsMode==='quality')for (const [x, y, z, col, inten] of map.lights) { const l = new THREE.PointLight(col, inten, 18, 2); l.position.set(x, y, z); world.add(l); }
+  for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xff8833, 0, 30, 2); if(!touchDevice&&graphicsMode==='quality')world.add(l); state.fxLights.push(l); }
 
   if (!map.open) { const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: panelTexture(map.colors.ground, [W / 4, D / 4]), roughness: 0.95 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; world.add(ground); state.wallMeshes.push(ground); }
@@ -276,6 +275,23 @@ function loadMap(key) {
 
 // ------------------------------------------------------------------ open-world maps (GLB)
 const mapCache = {};
+function releaseUnusedMaps(keepKey){
+  if(!touchDevice&&graphicsMode!=='performance')return;
+  for(const [key,cached] of Object.entries(mapCache)){
+    if(key===keepKey)continue;
+    cached.root.removeFromParent();
+    const textures=new Set(),materials=new Set(),geometries=new Set();
+    cached.root.traverse(object=>{
+      if(object.geometry)geometries.add(object.geometry);
+      for(const material of (Array.isArray(object.material)?object.material:[object.material]))if(material)materials.add(material);
+    });
+    for(const material of materials){for(const value of Object.values(material))if(value?.isTexture)textures.add(value);material.dispose();}
+    for(const texture of textures)texture.dispose();
+    for(const geometry of geometries)geometry.dispose();
+    cached.collMesh.geometry.dispose();cached.waterMesh.geometry.dispose();
+    delete mapCache[key];
+  }
+}
 function buildCollision(root,waterOnly=false) {
   const meshes = []; let nv = 0, ni = 0;
   root.traverse(o => {
@@ -421,8 +437,11 @@ function resolveCircle(pos, r, feetY, canClimb) {
 
 // ------------------------------------------------------------------ particles / fx
 const partGeo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+const bloodDropGeo = new THREE.SphereGeometry(0.06,6,4);
+const bloodStainGeo = new THREE.CircleGeometry(1,12);
+const bloodStainMat = new THREE.MeshBasicMaterial({color:0x390609,transparent:true,opacity:.67,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1});
 const partMats = {
-  blood: new THREE.MeshBasicMaterial({ color: 0x8a0a0a }), fire: new THREE.MeshBasicMaterial({ color: 0xffa030 }),
+  blood: new THREE.MeshBasicMaterial({ color: 0x760b12 }), bloodBright: new THREE.MeshBasicMaterial({color:0xae1820}), fire: new THREE.MeshBasicMaterial({ color: 0xffa030 }),
   spark: new THREE.MeshBasicMaterial({ color: 0xffe080 }), smoke: new THREE.MeshBasicMaterial({ color: 0x222222 }),
   debris: new THREE.MeshBasicMaterial({ color: 0x555555 }),
 };
@@ -431,16 +450,28 @@ const tracerMat = new THREE.LineBasicMaterial({ color: 0xffdd88, transparent: tr
 
 function emit(kind, pos, count, speed, life, size = 1, up = 0.5) {
   const gy = state.collMesh ? (floorAt(pos.x, pos.z, pos.y + 0.6, 40) ?? pos.y - 2) : 0;
+  const limit=touchDevice?96:graphicsMode==='performance'?180:500;
+  if(touchDevice||graphicsMode==='performance')count=Math.max(1,Math.ceil(count*(touchDevice ? .3 : .6)));
   for (let i = 0; i < count; i++) {
-    if (state.particles.length >= 500) return;
-    const m = new THREE.Mesh(partGeo, partMats[kind]); m.position.copy(pos);
+    if (state.particles.length >= limit) return;
+    const m = new THREE.Mesh(kind==='blood'?bloodDropGeo:partGeo, kind==='blood'&&Math.random()<.25?partMats.bloodBright:partMats[kind]); m.position.copy(pos);
     const v = new THREE.Vector3(rand(-1, 1), rand(-0.2, 1) + up, rand(-1, 1)).normalize().multiplyScalar(speed * rand(0.3, 1));
-    const s = size * rand(0.6, 1.4); m.scale.setScalar(s);
+    const s = size * rand(0.6, 1.4); m.scale.setScalar(s);if(kind==='blood')m.scale.set(s*.65,s*1.45,s*.65);
     state.world.add(m);
     state.particles.push({ m, v, life: life * rand(0.6, 1), max: life, grav: kind === 'smoke' ? -1 : 12, size: s, gy });
   }
 }
+function addBloodStain(m){
+  const ground=state.collMesh?floorAt(m.x,m.z,(m.y||0)+2,5):0;
+  if(ground===null)return;
+  const max=touchDevice?10:graphicsMode==='performance'?18:35;
+  if(state.bloodStains.length>=max){const old=state.bloodStains.shift();state.world.remove(old.mesh);}
+  const mesh=new THREE.Mesh(bloodStainGeo,bloodStainMat),radius=rand(.35,.8);
+  mesh.rotation.x=-Math.PI/2;mesh.rotation.z=rand(0,Math.PI*2);mesh.scale.set(radius,radius*rand(.65,1.25),1);mesh.position.set(m.x+rand(-.25,.25),ground+.025,m.z+rand(-.25,.25));
+  state.world.add(mesh);state.bloodStains.push({mesh,life:touchDevice?8:14});
+}
 function updateParticles(dt) {
+  for(let i=state.bloodStains.length-1;i>=0;i--){const stain=state.bloodStains[i];stain.life-=dt;if(stain.life<=0){state.world.remove(stain.mesh);state.bloodStains.splice(i,1);}}
   for (let i = state.particles.length - 1; i >= 0; i--) {
     const p = state.particles[i];
     p.life -= dt;
@@ -547,11 +578,12 @@ function damageMonster(m, dmg, point, gib = false, head = false) {
   if (m.dead) return;
   if(network.role==='guest'){network.action({kind:'hit',id:m.id,damage:dmg,pos:point.toArray(),head,gib});m.flash=.1;return;}
   m.hp -= dmg; m.flash = 0.1;
-  emit('blood', point, gib ? 12 : head ? 16 : 7, head ? 5 : 3.5, 0.6, 1, 0.4);
+  const bleeds=m.type!=='drone';
+  emit(bleeds?'blood':'spark', point, gib ? 12 : head ? 16 : 7, head ? 5 : 3.5, 0.6, 1, 0.4);
   let pts = gib ? 0 : head ? 50 : 10;
   if (m.hp <= 0) {
     m.dead = true; pts += m.T.score + (head ? Math.round(m.T.score * 0.5) : 0); state.kills++; sfx.kill(); operations.drop(new THREE.Vector3(m.x, m.y || 0, m.z));
-    emit('blood', new THREE.Vector3(m.x, (m.y || 0) + 1, m.z), 14, 4, 0.8, 1.3, 0.6);
+    if(bleeds){emit('blood', new THREE.Vector3(m.x, (m.y || 0) + 1, m.z), 14, 4, 0.8, 1.3, 0.6);addBloodStain(m);}
     m.moving = false; m.attackAnim = 0; m.windup = 0; m.slamT = 0; if (m.aim) m.aim.visible = false;
     if (m.T.boss) { banner('BOSS DOWN  +500$'); state.credits += 500; P.hp = Math.min(P.maxHp, P.hp + 40); }
   }
@@ -585,7 +617,7 @@ function updateMonsters(dt) {
       m.deadT += dt;
       m.group.rotation.x = -Math.min(1, m.deadT / 0.5) * Math.PI / 2;
       if (m.deadT > 3) m.group.position.y -= dt * 0.5;
-      animateMonster(m, dt);
+      animateMonster(m, dt, touchDevice||graphicsMode==='performance');
       if (m.deadT > 5) { if (m.aim) { state.world.remove(m.aim); m.aim.geometry.dispose(); } state.world.remove(m.group); state.monsters.splice(i, 1); }
       continue;
     }
@@ -647,7 +679,7 @@ function updateMonsters(dt) {
     }
     m.growlT -= dt;
     if (m.growlT <= 0) { m.growlT = rand(3, 8); if (dist < 25) sfx.growl(clamp(1 - dist / 25, 0.1, 1)); }
-    animateMonster(m, dt);
+    animateMonster(m, dt, (touchDevice||graphicsMode==='performance') && dist>(touchDevice?24:35));
   }
 }
 
@@ -891,6 +923,8 @@ function updatePlayer(dt) {
   if (P.onGround && sp > 0.5) { const previous = Math.floor(P.bob / Math.PI); P.bob += dt * sp * 1.4; if (Math.floor(P.bob / Math.PI) !== previous) sfx.step(); }
 }
 
+const cameraOffset=new THREE.Vector3(),cameraDirection=new THREE.Vector3(),cameraRay=new THREE.Raycaster();
+cameraRay.firstHitOnly=true;
 function updateCamera(dt) {
   const aiming=isAiming()&&!P.dead;
   camera.fov+=( (aiming?48:75)-camera.fov)*(1-Math.exp(-dt*12));camera.updateProjectionMatrix();
@@ -905,9 +939,11 @@ function updateCamera(dt) {
   camera.position.set(P.pos.x + rand(-1, 1) * s * 0.04, P.pos.y + eye + rand(-1, 1) * s * 0.04, P.pos.z + rand(-1, 1) * s * 0.04);
   camera.rotation.set(P.pitch + P.kick + rand(-1, 1) * s * 0.01, P.yaw + rand(-1, 1) * s * 0.01, roll);
   if (state.thirdPerson && !P.dead) {
-    const origin=camera.position.clone(),offset=(aiming?new THREE.Vector3(.5,.05,1.65):state.cameraMode === 'wide' ? new THREE.Vector3(.25,.65,4.5) : new THREE.Vector3(.65,.25,2.9)).applyQuaternion(camera.quaternion),distance=offset.length();
-    const check=new THREE.Raycaster(origin,offset.clone().normalize(),0,distance);check.firstHitOnly=true;
-    const wall=check.intersectObjects(state.wallMeshes,true)[0];
+    const offset=cameraOffset.set(aiming ? .5 : state.cameraMode==='wide' ? .25 : .65,aiming ? .05 : state.cameraMode==='wide' ? .65 : .25,aiming ? 1.65 : state.cameraMode==='wide' ? 4.5 : 2.9).applyQuaternion(camera.quaternion),distance=offset.length();
+    cameraDirection.copy(offset).multiplyScalar(1/distance);
+    let wall;
+    if(state.collMesh)wall=castRay(camera.position,cameraDirection,distance);
+    else{cameraRay.set(camera.position,cameraDirection);cameraRay.far=distance;wall=cameraRay.intersectObjects(state.wallMeshes,true)[0];}
     camera.position.addScaledVector(offset,wall ? Math.max(.05,wall.distance-.2)/distance : 1);
   }
   if (playerAvatar) {playerAvatar.root.visible=!!state.thirdPerson && !P.dead;playerAvatar.root.position.copy(P.pos);playerAvatar.root.rotation.y=P.yaw+Math.PI;playerAvatar.update(dt,sp>.5,sp,P.weapon,P.pitch);}
@@ -1061,8 +1097,8 @@ function buildMinimap() {
 }
 let lastRadarDraw=-Infinity;
 function drawMinimap() {
-  // Radar contacts refresh at 20 Hz; rendering the HUD need not redraw terrain every frame.
-  const now=performance.now();if(now-lastRadarDraw<50)return;lastRadarDraw=now;
+  // Mobile radar refreshes at 8 Hz to leave more time for the 3D scene.
+  const now=performance.now();if(now-lastRadarDraw<(touchDevice?125:graphicsMode==='performance'?80:50))return;lastRadarDraw=now;
   const info=renderRadar($('mini'),{player:P,map:state.map,background:miniStatic,backgroundScale:MSC,
     monsters:state.monsters,items:state.gameMode==='duel'?[]:operations.items,peers:state.gameMode==='duel'?[]:network.players.values(),selfId:network.id,time:state.time});
   $('radar-contacts').textContent=String(info.contacts).padStart(2,'0')+' CONTACTS';
@@ -1102,10 +1138,12 @@ function update(dt) {
   updateFx(dt); updateParticles(dt); updateFloaters(dt); updateProjs(dt); updateRings(dt); updateTracers(dt); updateGun(dt); updateHUD(dt);
 }
 // Lower resolution only after sustained slow frames; avoid reacting to loading stalls.
-let graphicsMode='performance',renderScale=Math.min(devicePixelRatio,touchDevice ? .7 : 1),frameSamples=0,frameTotal=0;
+let graphicsMode='performance',renderScale=Math.min(devicePixelRatio,1),frameSamples=0,frameTotal=0;
 function setGraphics(mode){
-  graphicsMode=mode;renderScale=Math.min(devicePixelRatio,mode==='quality'?(touchDevice ? 1 : 1.5):(touchDevice ? .7 : 1));
+  graphicsMode=mode;renderScale=Math.min(devicePixelRatio,mode==='quality'?(touchDevice ? 1.35 : 1.5):1);
   renderer.setPixelRatio(renderScale);renderer.shadowMap.enabled=mode==='quality'&&!touchDevice;
+  if(!touchDevice&&mode==='quality'){scene.add(shotLight);if(muzzleLight)gunPivot.add(muzzleLight);}
+  else{shotLight.removeFromParent();muzzleLight?.removeFromParent();}
   scene.traverse(o=>{if(o.isMesh)for(const m of (Array.isArray(o.material)?o.material:[o.material]))m.needsUpdate=true;});
   frameSamples=frameTotal=0;
   document.querySelectorAll('.graphicsbtn').forEach(b=>b.classList.toggle('sel',b.dataset.graphics===mode));
@@ -1113,6 +1151,7 @@ function setGraphics(mode){
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
+  if((state.paused||state.mode!=='playing')&&now-last<140)return;
   if(touchDevice&&now-last<29)return;
   const elapsed=(now-last)/1000;
   const dt = Math.min(0.05, elapsed); last = now;
@@ -1120,7 +1159,9 @@ function frame(now) {
     frameTotal+=elapsed;frameSamples++;
     if(frameSamples>=120){
       const average=frameTotal/frameSamples;
-      if(average>1/45&&renderScale>(touchDevice ? .5 : .65)){renderScale=Math.max(touchDevice ? .5 : .65,renderScale-.1);renderer.setPixelRatio(renderScale);}
+      const target=Math.min(devicePixelRatio,1);
+      if(average>(touchDevice ? 1/25 : 1/45)&&renderScale>(touchDevice ? .75 : .65)){renderScale=Math.max(touchDevice ? .75 : .65,renderScale-.1);renderer.setPixelRatio(renderScale);}
+      else if(average<(touchDevice ? 1/29 : 1/55)&&renderScale<target){renderScale=Math.min(target,renderScale+.05);renderer.setPixelRatio(renderScale);}
       frameTotal=frameSamples=0;
     }
   }else{frameTotal=frameSamples=0;}
@@ -1128,7 +1169,8 @@ function frame(now) {
   network.tick(now/1000,{pos:P.pos.toArray(),yaw:P.yaw,pitch:P.pitch,weapon:P.weapon,aiming:isAiming(),hp:P.hp,active:state.mode==='playing',moving:movementSpeed>.5,speed:movementSpeed},state.map&&network.role==='host'&&state.gameMode!=='duel'?coopSnapshot:null);
   const ambientOn = state.mode === 'playing' && !state.paused;
   if (state.ambientOn !== ambientOn) { state.ambientOn = ambientOn; setAmbience(ambientOn); }
-  if ((state.mode === 'playing' || state.mode === 'over') && !state.paused) update(dt);
+  if(state.mode==='playing'&&!state.paused)update(dt);
+  if(state.paused||state.mode!=='playing')return;
   renderer.clear();
   if (state.map && state.mode !== 'menu') {
     renderer.render(scene, camera);
@@ -1168,7 +1210,7 @@ async function startGame(key,setup=null) {
   if(state.gameMode==='duel'&&!setup&&(network.role!=='host'||network.players.size!==2)){$('loadtxt').textContent='1V1 needs a room with exactly two players. Create a room, invite a friend, then choose a map.';return;}
   initAudio();
   state.mode='loading'; state.paused=true; document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=true);
-  state.mapKey = key; loadMap(key); showMapLoading(key,state.map); await tick();
+  state.mapKey = key; loadMap(key); releaseUnusedMaps(key); showMapLoading(key,state.map); await tick();
   if (state.map.open) {
     document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = true; }); $('menu').classList.remove('hidden'); $('over').classList.add('hidden');
     try { await loadOpenWorld(state.map); } catch (e) { $('map-loading').classList.add('hidden'); $('loadtxt').textContent = 'Map failed to load: ' + e.message; console.error(e); state.mode='menu';state.paused=false;network.render(); return; }
@@ -1343,7 +1385,7 @@ function updateRemotePlayers(dt){
     avatar.root.visible=p.position.hp>0;avatar.root.position.lerp(new THREE.Vector3(...p.position.pos),1-Math.exp(-dt*14));avatar.root.rotation.y=angleLerp(avatar.root.rotation.y,p.position.yaw+Math.PI,Math.min(1,dt*14));avatar.update(dt,p.position.moving,p.position.speed||0,p.position.weapon||0,p.position.pitch||0);
   }
 }
-function updateGuestMonsters(dt){for(const m of state.monsters){m.flash=Math.max(0,m.flash-dt);m.group.position.lerp(new THREE.Vector3(m.x,m.y||0,m.z),1-Math.exp(-dt*14));m.group.rotation.y=angleLerp(m.group.rotation.y,m.netRotation||0,Math.min(1,dt*14));if(m.dead){m.deadT+=dt;m.group.rotation.x=-Math.min(1,m.deadT/.5)*Math.PI/2;}animateMonster(m,dt);}}
+function updateGuestMonsters(dt){for(const m of state.monsters){m.flash=Math.max(0,m.flash-dt);m.group.position.lerp(new THREE.Vector3(m.x,m.y||0,m.z),1-Math.exp(-dt*14));m.group.rotation.y=angleLerp(m.group.rotation.y,m.netRotation||0,Math.min(1,dt*14));if(m.dead){m.deadT+=dt;m.group.rotation.x=-Math.min(1,m.deadT/.5)*Math.PI/2;}animateMonster(m,dt,(touchDevice||graphicsMode==='performance')&&Math.hypot(m.x-P.pos.x,m.z-P.pos.z)>(touchDevice?24:35));}}
 function coopSnapshot(){return {mapKey:state.mapKey,wave:state.wave,toSpawn:state.toSpawn,bossQueued:state.bossQueued,paused:state.paused,shop:state.shopOpen,won:state.mode==='over'&&P.won,
   monsters:state.monsters.map(m=>({id:m.id,type:m.type,x:m.x,y:m.y||0,z:m.z,hp:m.hp,maxhp:m.maxhp,rotation:m.group.rotation.y,dead:m.dead,moving:m.moving,flash:m.flash,shootAnim:m.shootAnim,windup:m.windup})),
   barrels:state.barrels.map(b=>({id:b.netId,x:b.x,y:b.y,z:b.z,hp:b.hp,alive:b.alive})),operation:operations.snapshot()};}

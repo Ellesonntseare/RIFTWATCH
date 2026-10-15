@@ -15,6 +15,7 @@ CONTROLS
 WASD or arrow keys: move. Mouse: look. Shift: sprint. Space: jump.
 Left mouse: fire. Hold right mouse or press C: aim. R: reload.
 Scope View in the deployment settings switches the dark circular scope surround on or off.
+Performance is the default on PC and phone: it reduces distant animation, lights and effect particles. Quality restores the fuller PC lighting and effects and raises render resolution; on phones it raises resolution while keeping shadows off.
 1 / 2 / Q / mouse wheel: switch weapon. G: throw C4. F: detonate.
 E: interact, hold for relay recovery/extraction, pick up a ground gun.
 V: shoulder / wide / first-person POV. Esc: pause. M: mute game audio.
@@ -43,6 +44,7 @@ The host browser must remain open and active. Host departure closes the room.
 The existing Cloudflare tunnel serves the game, but full remote gameplay and a real two-person microphone call remain unverified. No TURN account was configured by this project.
 KAI's head/body/limb/grip cosmetic polish and the other heroes' limb/grip visual polish are deferred at your request.
 Large imported maps can still take time to decode and require a capable GPU. The loading panel shows download progress and preparation stages.
+Phone Performance starts at one rendered pixel per CSS pixel and only lowers resolution during sustained slow frames; it can recover resolution when performance improves. This game's files contain no Android build project, so an APK packaging workflow needs to be supplied separately.
 
 DEVELOPMENT
 npm test
