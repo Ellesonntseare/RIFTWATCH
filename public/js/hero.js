@@ -6,6 +6,7 @@ import { buildPersonalHead } from './personal-head.js';
 import {heroMotionClips,createHeroMotion} from './hero-motion.js';
 import {createHeroWeapon} from './hero-weapon.js';
 import {rigFigure} from './figure-rig.js';
+import {createBlobShadow} from './monsters.js';
 const templates=new Map();let faceTexture;
 export async function loadHero(file='MAIN HERO.glb') {
   if(!templates.has(file))templates.set(file,new GLTFLoader().loadAsync('/models/'+file).then(gltf=>{if(file==='figure_360.glb')gltf.scene=rigFigure(gltf.scene);return gltf;}));
@@ -43,6 +44,6 @@ export async function buildHero(skin=selectedSkin(),options={}) {
       if(motion)motion(dt,moving,speed);
     }};
   }
-  const clips=await heroMotionClips(config.file,gltf.scene),motion=createHeroMotion(model,root,clips),weapon=await createHeroWeapon(root,model);
+  const clips=await heroMotionClips(config.file,gltf.scene),motion=createHeroMotion(model,root,clips),weapon=await createHeroWeapon(root,model);root.add(createBlobShadow(.6));
   return {root,update(dt,moving=false,speed=0,weaponIndex=0,pitch=0){motion(dt,moving,speed);weapon.update(dt,weaponIndex,pitch);},muzzle:()=>weapon.muzzle(),flash:()=>weapon.flash(),skin};
 }

@@ -64,14 +64,14 @@ function fallback(T) {
 // Soft dark disc under each monster. Real shadows are off in Performance mode, so without this monsters look like they float.
 let blobMat=null,blobGeo=null,blobOn=true;
 export function setBlobShadows(on){blobOn=on;if(blobMat)blobMat.visible=on;}
-function makeBlobShadow(T){
+export function createBlobShadow(radius){
   if(!blobMat){
     const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,2,32,32,32);
     g.addColorStop(0,'rgba(0,0,0,.85)');g.addColorStop(.55,'rgba(0,0,0,.42)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64);
     blobMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
     blobMat.visible=blobOn;blobGeo=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2);
   }
-  const r=Math.min(3,Math.max(.45,T.h*.32)),m=new THREE.Mesh(blobGeo,blobMat);
+  const r=radius,m=new THREE.Mesh(blobGeo,blobMat);
   m.scale.set(r*2,1,r*2);m.position.y=.04;m.renderOrder=1;m.raycast=()=>{};return m;   // raycast off: bullets must ignore it
 }
 
@@ -96,7 +96,7 @@ export function buildMonster(type) {
     }
   } else inner = fallback(T);
   group.add(inner); rig.inner = inner;rig.groundFeet=createFootGrounding(inner,group);
-  rig.blob = makeBlobShadow(T); group.add(rig.blob);
+  rig.blob = createBlobShadow(Math.min(3,Math.max(.45,T.h*.32))); group.add(rig.blob);
   const distant = distantShape(T);
   rig.distant = new THREE.Mesh(distant.geometry, distant.material);
   rig.distant.scale.set(T.h / 1.5, T.h / 1.5, T.h / 1.5);
