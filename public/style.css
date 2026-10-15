@@ -263,3 +263,24 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
   #ammobox{left:145px;padding:3px 7px}#ammo{font-size:15px}
   #banner{font-size:16px;top:22%}
 }
+
+/* Start menu: fit small phone screens. Landscape phones get a compact one-screen layout; tiny portrait screens get tighter spacing. */
+@media(max-height:540px) and (orientation:landscape){
+  #menu{padding:calc(6px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+  #menu .back-characters{font-size:9px}
+  .menu-brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px}
+  #menu h1,.menu-brand h1{font-size:clamp(22px,5.5vh,32px)!important;margin:2px 0}
+  #menu .brief,#menu .keys,.hero-link span,.deployment-label span,.eyebrow{display:none}
+  #loadtxt{margin:2px 0 6px}.hero-link{margin:0 0 6px}
+  .deployment-label{padding-top:6px}
+  #modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:6px;gap:5px}.modebtn{flex:none;padding:5px 4px}
+  .play-options{margin-top:6px;gap:4px}.play-options button{padding:5px 7px}
+  #lobby{margin-top:6px;padding:6px 8px}.lobby-heading{margin-bottom:4px}#lobby p{margin:4px 0 0}
+  #maps{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}.mapbtn{min-height:64px;padding:7px 9px}.mapbtn b{margin-top:6px;font-size:13px}.mapbtn small{font-size:9px}.map-index{font-size:8px}.map-art{opacity:.35}
+}
+@media(max-width:380px){
+  #menu{padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
+  #menu h1,.menu-brand h1{font-size:clamp(26px,9vw,34px)!important}
+  .modebtn{flex:1 1 100px}.play-options button{padding:6px 6px;font-size:8px}.lobby-controls input{width:100%}
+  .mapbtn{min-height:80px}.mapbtn b{margin-top:12px}
+}
