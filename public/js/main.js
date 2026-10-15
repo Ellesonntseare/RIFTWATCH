@@ -13,6 +13,7 @@ import { MAPS } from './maps.js';
 import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels } from './monsters.js';
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
 import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
+import { installMenuClicks } from './ui-clicks.js?v=20261015-menu-audio';
 
 let BVH = null;   // makes raycasts on million-triangle maps fast
 try { BVH = await import('three-mesh-bvh'); THREE.Mesh.prototype.raycast = BVH.acceleratedRaycast; } catch (e) { console.warn('three-mesh-bvh unavailable - big maps will be slow', e); }
@@ -1465,6 +1466,7 @@ const network=createNetwork({
 });
 
 // menu
+installMenuClicks();
 document.querySelectorAll('.graphicsbtn').forEach(b=>b.addEventListener('click',()=>setGraphics(b.dataset.graphics)));
 document.querySelectorAll('.scopebtn').forEach(b=>{b.classList.toggle('sel',(b.dataset.scope==='on')===scopeEffect);b.addEventListener('click',()=>{scopeEffect=b.dataset.scope==='on';localStorage.setItem('riftwatch-scope',scopeEffect?'on':'off');document.querySelectorAll('.scopebtn').forEach(x=>x.classList.toggle('sel',x===b));$('scope-overlay').classList.toggle('hidden',!scopeEffect||!isAiming()||state.paused);});});
 document.querySelectorAll('.povbtn').forEach(b=>b.addEventListener('click',()=>{state.cameraMode=b.dataset.pov;state.thirdPerson=state.cameraMode!=='first';document.querySelectorAll('.povbtn').forEach(x=>x.classList.toggle('sel',x===b));}));

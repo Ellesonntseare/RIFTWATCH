@@ -3,6 +3,7 @@ let music=null,musicVolume=.09,ducked=false;
 export function setMusicVolume(value){musicVolume=Math.max(0,Math.min(.3,value));if(music)music.volume=musicVolume*(ducked?.35:1);}
 export function duckMusic(speaking){ducked=!!speaking;setMusicVolume(musicVolume);}
 export function toggleAudio() { muted = !muted; if (master) master.gain.setTargetAtTime(muted ? 0 : 0.35, ac.currentTime, 0.1);if(music)music.muted=muted; return muted; }
+export function isAudioMuted() { return muted; }
 export function setAmbience(active) { if (ambience) ambience.gain.setTargetAtTime(active ? 0.015 : 0, ac.currentTime, 0.4);if(music){if(active)music.play().catch(()=>{});else music.pause();} }
 export function initAudio() {
   if (ac) { ac.resume();music?.play().catch(()=>{}); return; }

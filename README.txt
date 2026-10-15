@@ -23,6 +23,7 @@ Performance is the default on PC and phone: it reduces distant animation, lights
 1 / 2 / Q / mouse wheel: switch weapon. G: throw C4. F: detonate.
 E: interact, hold for relay recovery/extraction, pick up a ground gun.
 V: shoulder / wide / first-person POV. Esc: pause. M: mute game audio.
+Menus use original soft sci-fi clicks and a distinct deployment confirmation; M also mutes these sounds during gameplay.
 Click RESUME / CAPTURE MOUSE after loading. Continuous turning requires browser pointer lock.
 Esc releases the mouse and pauses. If capture is blocked, open the game in Chrome or Edge.
 On a phone, use the left joystick to move and drag the right side to look. Hold FIRE, AIM, JUMP or RUN. Hold the HOLD E button to recover data or extract; tap it to pick up a gun or open a cache. Use RELOAD, SWAP, C4 and VIEW as needed. Tap C4 again after it arms to detonate. The HUD rearranges when the phone rotates; no landscape button is needed.

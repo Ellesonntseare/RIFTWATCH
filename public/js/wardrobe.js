@@ -1,5 +1,7 @@
 import { HEROES,selectedHero } from './roster.js';
 import {createHeroSelection} from './hero-selection.js';
+import {installMenuClicks} from './ui-clicks.js?v=20261015-menu-audio';
+installMenuClicks(true);
 const $=id=>document.getElementById(id);
 let index=HEROES.findIndex(h=>h.id===selectedHero().id),preview;
 const getPreview=()=>preview ||= import('./hero-preview.js');
