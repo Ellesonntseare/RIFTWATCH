@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class MainActivity extends Activity {
-    private static final String GAME_URL = "https://rift.teamtrader.co.za/hero.html";
+    private static final String GAME_URL = "https://rift.teamtrader.co.za/";
     private static final int AUDIO_PERMISSION_REQUEST = 1;
     private WebView gameView;
     private PermissionRequest pendingAudioRequest;
