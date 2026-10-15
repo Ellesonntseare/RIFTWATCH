@@ -7,7 +7,7 @@ Dependencies and browser libraries are bundled. If node_modules is missing, run 
 
 ANDROID APK
 Open GitHub Actions > Build Android APK > latest successful run > Artifacts, then download RIFTWATCH-Android-APK. Unzip it and install app-debug.apk on an Android phone (Android 8 or newer). This is a debug-signed APK for direct installation, not a Play Store release.
-The app opens https://rift.teamtrader.co.za/hero.html and uses the game's touch controls. It rotates when the phone rotates and auto-rotate is enabled; no landscape button is needed. Optimized character, combat and map models are bundled in the APK to avoid downloading them through the tunnel. The game server and Cloudflare tunnel must still be running and reachable for the app to play. A successful APK build does not prove remote gameplay works.
+The app opens https://rift.teamtrader.co.za/ and uses the game's touch controls. Operator selection and callsign editing are integrated into the main menu. It rotates when the phone rotates and auto-rotate is enabled; no landscape button is needed. Optimized character, combat and map models are bundled in the APK to avoid downloading them through the tunnel. The game server and Cloudflare tunnel must still be running and reachable for the app to play. A successful APK build does not prove remote gameplay works.
 
 PLAY
 Choose a hero with left/right arrows before deploying. Each hero has its own health, speed and reload stats.
