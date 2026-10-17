@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {reloadPose} from './combat-tuning.js';
 import {createWeaponGrip} from './arm-ik.js';
 const files=['low-poly_colt_m4a1.glb','chg_laser_machine_gun.glb'];
 let templates;
@@ -31,7 +32,7 @@ export async function createHeroWeapon(root,model){
   let selected=0,flashTime=0;
   const position=new THREE.Vector3();
   return {
-    update(dt,weapon=0,pitch=0,handsBusy=false){mount.visible=!handsBusy;if(handsBusy){flashTime=0;flash.visible=false;light.intensity=0;return;}selected=weapon===1?1:0;mount.children.slice(0,2).forEach((g,i)=>g.visible=i===selected);mount.position.set(-.15,1.31+model.position.y-baseY,.32);mount.rotation.x=-pitch;root.updateMatrixWorld(true);const right=grips[selected].right.clone().applyQuaternion(mount.quaternion).add(mount.position),left=grips[selected].left.clone().applyQuaternion(mount.quaternion).add(mount.position);grip(right,left,pitch);flashTime=Math.max(0,flashTime-dt);flash.position.copy(muzzles[selected]);light.position.copy(flash.position);flash.visible=flashTime>0;light.intensity=flash.visible?1.5:0;root.updateMatrixWorld(true);},
+    update(dt,weapon=0,pitch=0,handsBusy=false,reloading=0){mount.visible=!handsBusy;if(handsBusy){flashTime=0;flash.visible=false;light.intensity=0;return;}selected=weapon===1?1:0;mount.children.slice(0,2).forEach((g,i)=>g.visible=i===selected);mount.position.set(-.15,1.31+model.position.y-baseY,.32);const reload=reloadPose(reloading);mount.position.y-=reload.lower*.15;mount.rotation.set(-pitch+reload.lower*.35,0,reload.lower*.2);root.updateMatrixWorld(true);const right=grips[selected].right.clone().applyQuaternion(mount.quaternion).add(mount.position),left=grips[selected].left.clone().applyQuaternion(mount.quaternion).add(mount.position);left.y-=reload.magazine*.25;left.z-=reload.magazine*.10;grip(right,left,pitch);flashTime=Math.max(0,flashTime-dt);flash.position.copy(muzzles[selected]);light.position.copy(flash.position);flash.visible=flashTime>0;light.intensity=flash.visible?1.5:0;root.updateMatrixWorld(true);},
     muzzle(){return mount.localToWorld(muzzles[selected].clone());},
     flash(){flashTime=.055;}
   };

@@ -45,5 +45,5 @@ export async function buildHero(skin=selectedSkin(),options={}) {
     }};
   }
   const clips=await heroMotionClips(config.file,gltf.scene),motion=createHeroMotion(model,root,clips),weapon=await createHeroWeapon(root,model);const blob=createBlobShadow(.6);root.add(blob);
-  return {root,playMove:(name,duration)=>motion.play(name,duration),update(dt,moving=false,speed=0,weaponIndex=0,pitch=0,motionState={}){motion(dt,moving,speed,motionState);weapon.update(dt,weaponIndex,pitch,motion.handsBusy||motionState.dead||motionState.unarmed);blob.visible=!motionState.dead;},muzzle:()=>weapon.muzzle(),flash:()=>weapon.flash(),skin};
+  return {root,playMove:(name,duration)=>motion.play(name,duration),update(dt,moving=false,speed=0,weaponIndex=0,pitch=0,motionState={}){motion(dt,moving,speed,motionState);weapon.update(dt,weaponIndex,pitch,motion.handsBusy||motionState.dead||motionState.unarmed,motionState.reload||0);blob.visible=!motionState.dead;},muzzle:()=>weapon.muzzle(),flash:()=>weapon.flash(),skin};
 }

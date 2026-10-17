@@ -15,6 +15,8 @@ import { MONSTER_TYPES, buildMonster, animateMonster, loadMonsterModels, setMons
 import { initAudio, sfx, toggleAudio, setAmbience,setMusicVolume } from './audio.js';
 import { initTouchHud } from './touch-hud.js?v=20261015-hud-editor';
 import { installMenuClicks } from './ui-clicks.js?v=20261015-audio-startup-fix';
+import {createLoadingIntro} from './loading-intro.js';
+import {weaponFeel,reloadPose,gyroDelta,steerAround} from './combat-tuning.js';
 import {chooseAssistTarget} from './aim-assist.js';
 import {createIceCover} from './ice-cover.js';
 import {damageBearing} from './damage-direction.js';
@@ -110,6 +112,8 @@ const up = { dmg: 0, head: 0, mag: 0, hp: 0, reload: 0, c4: 0 };
 const magSize = (w = CFG.gun) => Math.round(w.mag * (1 + 0.2 * up.mag));
 const ws = WEAPONS.map(w => ({ ammo: w.mag, reserve: w.reserve }));
 let mouseDown = false, locked = false,aimHeld=false,aimToggle=false;
+const aimSettings={camera:1,scope:.65,strength:.6};try{const saved=JSON.parse(localStorage.getItem('riftwatch-aim-settings')||'{}');for(const k in aimSettings)if(Number.isFinite(saved[k]))aimSettings[k]=clamp(saved[k],k==='strength'?0:.2,k==='strength'?1:2); }catch{}
+let gyroEnabled=false,gyroLast=0,gyroMotionAt=0,gyroOrientation=null;
 let aimAssistEnabled=localStorage.getItem('riftwatch-aim-assist')==='on',aimAssistTime=0;
 const isAiming=()=>!P.unarmed&&(aimHeld||aimToggle);
 let scopeEffect=localStorage.getItem('riftwatch-scope')!=='off';
@@ -409,7 +413,9 @@ function loadingStage(stage, message) {
     item.classList.toggle('complete', i < active);
   });
 }
+const loadingIntro=createLoadingIntro({panel:$('map-loading'),caption:$('intro-caption'),skip:$('skip-intro'),reduced:matchMedia('(prefers-reduced-motion: reduce)').matches});
 function showMapLoading(key, map) {
+  loadingIntro.begin();
   $('loading-map-name').textContent = map.name;
   $('loading-map-desc').textContent = map.desc;
   $('loading-sector-art').className = `map-art map-${key}`;
@@ -686,7 +692,7 @@ function spawnMonster(type, x, z) {
 function damageMonster(m, dmg, point, gib = false, head = false) {
   if (m.dead) return;
   if(network.role==='guest'){network.action({kind:'hit',id:m.id,damage:dmg,pos:point.toArray(),head,gib});m.flash=.1;return;}
-  m.hp -= dmg; m.flash = 0.1;
+  m.hp -= dmg; m.flash = 0.1;m.alertT=1.4;m.strafeT=Math.max(m.strafeT||0,.65);m.strafe=m.flankSide||1;
   if(m.type==='runner'&&m.hp>0){m.fleeT=2.8;m.windup=0;m.attackAnim=0;}
   if(m.T.armored&&m.hp<=m.maxhp*.5)m.armorBroken=true;
   const bleeds=m.type!=='drone';
@@ -738,6 +744,7 @@ function updateMonsters(dt) {
     const dx = player.pos.x - m.x, dz = player.pos.z - m.z, dist = Math.hypot(dx, dz) || 0.001;
     setMonsterDetail(m,Math.hypot(m.x-P.pos.x,m.z-P.pos.z),touchDevice||graphicsMode==='performance');
     if (state.map.ring && dist > 75 && !T.stationary) { const s = ringSpot(); if (s) { m.x = s[0]; m.z = s[1]; m.y = s[2] || 0; m.lastX = m.x; m.lastZ = m.z; m.group.position.set(m.x, m.y || 0, m.z); } continue; }
+    m.alertT=Math.max(0,(m.alertT||0)-dt);
     m.fleeT=Math.max(0,(m.fleeT||0)-dt);const fleeing=m.type==='runner'&&m.fleeT>0&&!player.dead;
     m.running=!T.stationary&&!player.dead&&(T.clip==='run'||dist>18);
     const nx = dx / dist, nz = dz / dist, speed = T.speed * m.speedMul * (m.running&&T.clip!=='run'?1.55:1);
@@ -751,7 +758,7 @@ function updateMonsters(dt) {
     const attacking = T.ranged ? (m.los && dist <= T.range * 0.9) : dist <= T.range * 0.9;
     // Gunners circle an exposed player; runners keep their direct rush.
     if(m.type==='shooter'&&(m.flankT-=dt)<=0){m.flankSide*=-1;m.flankT=rand(1.5,3);}
-    const flanking=m.type==='shooter'&&m.los&&dist>8&&dist<26&&!player.dead;
+    const flanking=m.type==='shooter'&&(m.los||m.alertT>0)&&dist>8&&dist<26&&!player.dead;
     m.moving = (fleeing||!attacking||flanking) && !player.dead;
     const retreat = T.ranged && m.los && dist < (T.keep || 7) && !player.dead;
     if (retreat) m.moving = true;
@@ -761,6 +768,10 @@ function updateMonsters(dt) {
        if (retreat||fleeing) { mx = -nx; mz = -nz; }
        else if(flanking){mx=nx*.25-nz*m.flankSide*.85;mz=nz*.25+nx*m.flankSide*.85;}
        if (m.strafeT > 0 && !fleeing) { m.strafeT -= dt; mx = nx * 0.35 - nz * m.strafe * 0.9; mz = nz * 0.35 + nx * m.strafe * 0.9; }
+      m.navT=(m.navT||0)-dt;
+      if(m.navT<=0){m.navT=.18;const reach=Math.max(1.4,T.radius+speed*.35);m.nav=steerAround(mx,mz,(x,z)=>{const px=m.x+x*reach,pz=m.z+z*reach;if(fieldBlocked(px,pz,T.radius+.15))return false;const origin=new THREE.Vector3(m.x,(m.y||0)+.7,m.z),direction=new THREE.Vector3(x,0,z);const hit=state.collMesh?castRay(origin,direction,reach):new THREE.Raycaster(origin,direction,0,reach).intersectObjects(state.wallMeshes,true)[0];if(hit)return false;if(state.collMesh){const y=floorAt(px,pz,(m.y||0)+.7,2);if(y===null||Math.abs(y-(m.y||0))>.7)return false;}return true;},m.strafe||1);}
+      mx=m.nav.x;mz=m.nav.z;m.moving=Math.hypot(mx,mz)>.1;
+      if(m.moving&&!T.ranged)m.group.rotation.y=angleLerp(m.group.rotation.y,Math.atan2(mx,mz),1-Math.exp(-dt*12));
       m.x += mx * speed * dt; m.z += mz * speed * dt;
     }
     for (const o of state.monsters) {
@@ -776,7 +787,7 @@ function updateMonsters(dt) {
     m.stuckT += dt;
     if (m.stuckT >= 0.6) {
       if (m.moving && Math.hypot(m.x - m.lastX, m.z - m.lastZ) < speed * 0.6 * 0.25) {
-        m.stuckN++;
+        m.stuckN++;m.navT=0;m.strafe=-(m.strafe||1);
         if (m.strafeT <= 0) { m.strafeT = 1.6; m.strafe = Math.random() < 0.5 ? -1 : 1; }
         if (m.stuckN >= 6 && dist > 20 && state.map.ring) { const s = ringSpot(); if (s) { m.x = s[0]; m.z = s[1]; m.y = s[2] || 0; m.stuckN = 0; } }
       } else m.stuckN = 0;
@@ -786,7 +797,7 @@ function updateMonsters(dt) {
     if (!fleeing && !player.dead && dist <= T.range + 0.3 && m.cd <= 0 && m.windup <= 0 && !(m.slamT > 0) && (!T.ranged || m.los)) { m.windup = m.wMax = T.aim ? 0.9 : T.ranged ? 0.5 : T.boss ? 0.6 : 0.35; m.cd = T.cd * (T.ranged ? rand(1, 1.6) : 1); }
     if (m.windup > 0) {
       m.windup -= dt; m.attackAnim = clamp(1 - m.windup / m.wMax, 0, 1);
-      if (m.windup <= 0) { m.attackAnim = 0; if (T.ranged) { if (!player.dead && m.los) { enemyShoot(m); if (T.burst) { m.burstLeft = T.burst - 1; m.burstT = 0.14; } } } else if (dist <= T.range + 0.6 && !player.dead) hurtTarget(player,T.dmg,{x:m.x,z:m.z}); }
+      if (m.windup <= 0) { m.attackAnim = 0; if (T.ranged) { if (!player.dead && m.los) { enemyShoot(m); if (T.burst) { m.burstLeft = T.burst - 1; m.burstT = 0.14; } } } else if (dist <= T.range + 0.6 && !player.dead && hasLOS(m,dist)) hurtTarget(player,T.dmg,{x:m.x,z:m.z}); }
     }
     if (m.aim) {                                   // red aim line warns you a shot is coming
       const on = m.windup > 0 && m.los;
@@ -855,7 +866,7 @@ function updateProjs(dt) {
         if(distance<hitDistance){hitDistance=distance;hitPlayer=player;}
       }
       if(hitPlayer&&hitDistance<=step&&(!wall||hitDistance<wall.distance)){hurtTarget(hitPlayer,p.dmg,p.source||pos);dead=true;}
-      else if(wall){emit('spark',wall.point,4,3,.3,.7,.3);dead=true;}
+      else if(wall){if(wall.object?.userData.iceId!==undefined&&network.role!=='guest')iceCover.damage(wall.object.userData.iceId,p.dmg);emit('spark',wall.point,4,3,.3,.7,.3);dead=true;}
       pos.addScaledVector(p.v, dt);
     }
     if (dead) { state.world.remove(p.mesh); state.projs.splice(i, 1); }
@@ -1034,7 +1045,7 @@ function hurtPlayer(a,source) {
   state.hurt = Math.min(1, state.hurt + 0.35); state.shake = Math.max(state.shake, 0.2); sfx.hurt();
   if (P.hp <= 0) die();
 }
-function die() {if(state.gameMode==='duel')return;P.dead=true;P.deadT=0;setRunLock(false);mouseDown=false;if(network.role)banner('DOWN · RESPAWNING IN 8 SECONDS');}
+function die() {cancelIcePreview();if(state.gameMode==='duel')return;P.dead=true;P.deadT=0;setRunLock(false);mouseDown=false;if(network.role)banner('DOWN · RESPAWNING IN 8 SECONDS');}
 function endMatch(won) {
   mapExpanded=false;$('expanded-map').classList.add('hidden');
   P.dead = true; P.won = won; P.deadT = 0; state.mode = 'over'; mouseDown = false;document.body.classList.remove('mobile-playing');
@@ -1092,7 +1103,7 @@ function updateCamera(dt) {
   camera.fov+=( (aiming?48:75)-camera.fov)*(1-Math.exp(-dt*12));camera.updateProjectionMatrix();
   $('cross').classList.toggle('aiming',aiming);
   $('scope-overlay').classList.toggle('hidden',!aiming||!scopeEffect);
-  P.kick *= Math.exp(-dt * (operations.buffs.recoil>0?24:14));
+  P.kick *= Math.exp(-dt * weaponFeel[P.weapon].recovery*(operations.buffs.recoil>0?1.7:1));
   state.shake = Math.max(0, state.shake - dt * 2.5);
   const sp = Math.hypot(P.vel.x, P.vel.z);
   let eye = CFG.eye + (P.onGround ? Math.sin(P.bob) * 0.03 * clamp(sp / 6, 0, 1.3) : 0), roll = 0;
@@ -1108,7 +1119,7 @@ function updateCamera(dt) {
     else{cameraRay.set(camera.position,cameraDirection);cameraRay.far=distance;wall=cameraRay.intersectObjects(state.wallMeshes,true)[0];}
     camera.position.addScaledVector(offset,wall ? Math.max(.05,wall.distance-.2)/distance : 1);
   }
-  if (playerAvatar) {playerAvatar.root.visible=!!state.thirdPerson || P.dead;playerAvatar.root.position.copy(P.pos);playerAvatar.root.rotation.y=P.yaw+Math.PI;playerAvatar.update(dt,sp>.5,sp,P.weapon,P.pitch,{dead:P.dead,unarmed:P.unarmed,airborne:!P.onGround,jumping:P.jumping,running:isSprinting(),lateral:isStrafing()});}
+  if (playerAvatar) {const cameraClearance=Math.hypot(camera.position.x-P.pos.x,camera.position.z-P.pos.z);playerAvatar.root.visible=(!!state.thirdPerson||P.dead)&&(P.dead||cameraClearance>.85);playerAvatar.root.position.copy(P.pos);playerAvatar.root.rotation.y=P.yaw+Math.PI;playerAvatar.update(dt,sp>.5,sp,P.weapon,P.pitch,{dead:P.dead,unarmed:P.unarmed,reload:P.reloading>0?1-P.reloading/P.reloadDur:0,airborne:!P.onGround,jumping:P.jumping,running:isSprinting(),lateral:isStrafing()});}
   camera.updateMatrixWorld();
   if (state.sun) { state.sun.target.position.set(P.pos.x, 0, P.pos.z); state.sun.position.set(P.pos.x + 20, 45, P.pos.z + 12); state.sun.target.updateMatrixWorld(); }
   state.sky?.position.copy(camera.position);
@@ -1120,6 +1131,7 @@ function startReload() {
   P.reloadDur = CFG.gun.reload * (1 - 0.12 * up.reload) * selectedHero().reload; P.reloading = P.reloadDur; sfx.reload();
 }
 function handleShooting(dt) {
+  if(icePlacement&&mouseDown){mouseDown=false;deployIce();return;}
   P.fireCd -= dt;
   if (P.reloading > 0) {
     P.reloading -= dt;
@@ -1168,6 +1180,7 @@ function rayNear(m) {                          // cheap box test so we only ray-
   _bx.min.set(m.x - r, y - 0.2, m.z - r); _bx.max.set(m.x + r, y + m.T.h + 0.3, m.z + r);
   return ray.ray.intersectsBox(_bx, _bv) !== null;
 }
+function reactToShot(from,to){const segment=to.clone().sub(from),length=segment.lengthSq();if(!length)return;for(const m of state.monsters){if(m.dead||m.T.stationary)continue;const p=new THREE.Vector3(m.x,(m.y||0)+1,m.z),t=clamp(p.clone().sub(from).dot(segment)/length,0,1);if(p.distanceTo(from.clone().addScaledVector(segment,t))<1.4){m.alertT=1.4;m.navT=0;if(m.type==='runner')m.fleeT=2.8;else{m.strafeT=.8;m.strafe=m.flankSide||1;}}}}
 function fire() {
   state.shots++;
   const eye = camera.getWorldPosition(new THREE.Vector3());
@@ -1190,7 +1203,8 @@ function fire() {
   const firstHit=hits.find(solidHit);
   if (firstHit) {
     const h = firstHit, o = h.object; end.copy(h.point);
-    if (o.userData.monster) {
+    if(o.userData.iceId!==undefined){if(network.role==='guest')network.action({kind:'ice-hit',id:o.userData.iceId,damage:CFG.gun.dmg});else iceCover.damage(o.userData.iceId,CFG.gun.dmg);emit('spark',h.point,5,2,.3,.7,.3);}
+    else if (o.userData.monster) {
       const mm = o.userData.monster, head = (h.point.y - (mm.y || 0)) / mm.T.h > mm.T.headFrom;
       const damage=(operations.buffs.damage > 0 ? 1.8 : 1) * CFG.gun.dmg * (1 + 0.12 * up.dmg) * (head ? CFG.gun.headMul + 0.5 * up.head : (mm.T.bodyMul || 1));
       const armorBreak=mm.T.armored&&!mm.armorBroken&&mm.hp>mm.maxhp*.5&&mm.hp-damage<=mm.maxhp*.5&&mm.hp-damage>0;
@@ -1208,7 +1222,8 @@ function fire() {
   else if(network.role==='guest')network.action({kind:'shot',pos:start.toArray(),end:end.toArray(),weapon:P.weapon});
   else if(network.role==='host')network.effect({kind:'shot',pos:start.toArray(),end:end.toArray(),owner:network.id,weapon:P.weapon});
   addTracer(start, end);
-  P.kick += CFG.gun.recoil * rand(0.7, 1.3); P.pitch = Math.min(1.5, P.pitch + 0.0035); P.yaw += rand(-0.002, 0.002);
+  if(network.role!=='guest')reactToShot(start,end);
+  const feel=weaponFeel[P.weapon];P.kick=Math.min(.075,P.kick+feel.kick*rand(.85,1.15)*(isAiming()?.7:1));P.yaw+=rand(-feel.side,feel.side);
   P.gk = 1; state.flashT = 0.05; shotLight.position.copy(start); sfx[CFG.gun.snd]();
 }
 let activePing=null,lastPingAt=0;
@@ -1293,10 +1308,10 @@ function updateC4(dt) {
 // ------------------------------------------------------------------ gun viewmodel + HUD
 function updateGun(dt) {
   $('cross').classList.toggle('firing',state.flashT>0&&!P.dead);
-  P.gk = Math.max(0, P.gk - dt * (operations.buffs.recoil>0?38:24));
+  P.gk = Math.max(0, P.gk - dt * weaponFeel[P.weapon].view*(operations.buffs.recoil>0?1.6:1));
   P.swayX *= Math.exp(-dt * 8); P.swayY *= Math.exp(-dt * 8);
   const sp = clamp(Math.hypot(P.vel.x, P.vel.z) / 6, 0, 1.4), moving = P.onGround ? sp : 0;
-  const rl = P.reloading > 0 ? Math.sin((1 - P.reloading / (P.reloadDur || CFG.gun.reload)) * Math.PI) : 0;
+  const reload=reloadPose(P.reloading>0?1-P.reloading/(P.reloadDur||CFG.gun.reload):0),rl=reload.lower;
   const punching=meleeTimer>0&&!P.dead;
   gunPivot.visible = !P.dead&&!punching&&!P.unarmed;
   punchView.visible=(punching||P.unarmed)&&!P.dead&&!state.thirdPerson;
@@ -1305,9 +1320,9 @@ function updateGun(dt) {
   punchView.rotation.set(-extension*.12,extension*.2,-extension*.18);
   gunPivot.position.set(
     (isAiming()?0:gunBase.x) + Math.sin(P.bob * 0.5) * 0.012 * moving + P.swayX,
-    (isAiming()?-.12:gunBase.y) + Math.abs(Math.cos(P.bob * 0.5)) * 0.012 * moving + P.swayY - rl * 0.25,
+    (isAiming()?-.12:gunBase.y) + Math.abs(Math.cos(P.bob * 0.5)) * 0.012 * moving + P.swayY - rl * 0.31,
     (isAiming()?-.48:gunBase.z) + P.gk * 0.06);
-  gunPivot.rotation.set(P.gk * 0.08 - rl * 0.6, P.swayX * 2, rl * 0.3);
+  gunPivot.rotation.set(P.gk * 0.08 - rl * 0.6, P.swayX * 2, rl * .55);
   if (flashMesh) {
     state.flashT -= dt;
     const on = state.flashT > 0;
@@ -1322,7 +1337,7 @@ function updateAimAssist(dt){
  const origin={x:P.pos.x,y:P.pos.y+CFG.eye,z:P.pos.z};
  const targets=state.monsters.map(m=>({x:m.x,y:(m.y||0)+m.T.h*.65,z:m.z,dead:m.dead}));
  const target=chooseAssistTarget(origin,P.yaw,P.pitch,targets,t=>{const from=new THREE.Vector3(origin.x,origin.y,origin.z),dir=new THREE.Vector3(t.x,t.y,t.z).sub(from),distance=dir.length();dir.normalize();return !(state.collMesh?castRay(from,dir,distance-.2):new THREE.Raycaster(from,dir,0,distance-.2).intersectObjects(state.wallMeshes,true)[0]);});
- if(target){const k=1-Math.exp(-dt*7);P.yaw+=(target.yaw-P.yaw)*k;P.pitch+=(target.pitch-P.pitch)*k;}
+ if(target){const k=1-Math.exp(-dt*12*aimSettings.strength);P.yaw+=(target.yaw-P.yaw)*k;P.pitch+=(target.pitch-P.pitch)*k;}
 }
 const aimCheckRay=new THREE.Raycaster();let aimCheckTime=0;
 function updateAimTarget(dt){
@@ -1375,6 +1390,7 @@ function updateHUD(dt) {
   $('hpfill').style.width = Math.max(0, P.hp) / P.maxHp * 100 + '%'; $('hptext').textContent = Math.max(0, Math.ceil(P.hp)); $('hpbox').classList.toggle('low', P.hp < 30 && !P.dead);
   for(const b of document.querySelectorAll('[data-weapon-slot]'))b.classList.toggle('selected',b.dataset.weaponSlot===(P.unarmed?'fist':String(P.weapon)));
   $('ammobox').classList.toggle('unarmed',!!P.unarmed);
+  $('reload-progress').hidden=P.reloading<=0;$('reload-progress').value=P.reloading>0?1-P.reloading/P.reloadDur:0;
   $('ammo').textContent = P.unarmed?'MELEE':P.reloading > 0 ? 'RELOADING' : `${P.ammo} / ${P.reserve}`;
   $('c4txt').textContent = `C4 x${P.c4}   ARMED ${state.c4s.filter(c => c.stuck).length} [F]`;
   $('camera-label').textContent = (state.cameraMode === 'first' ? 'FIRST PERSON' : state.cameraMode === 'wide' ? 'THIRD PERSON / WIDE' : 'THIRD PERSON / SHOULDER') + ' · V SWITCH';
@@ -1388,6 +1404,7 @@ function updateHUD(dt) {
   $('compass').textContent = ['N','NE','E','SE','S','SW','W','NW'][Math.round((( -P.yaw * 180 / Math.PI) % 360 + 360) % 360 / 45) % 8] + ' / ' + state.map.name.toUpperCase();
   }
   $('hurt').style.opacity = 0; // Damage is shown only in the incoming direction.
+  $('hit-label').textContent=state.hitT>0?(state.hitKill?'ELIMINATED':state.hitHead?'HEADSHOT':state.hitArmor?'ARMOR BREAK':''):'';
   $('hit').style.opacity = state.hitT > 0 ? 1 : 0; $('hit').classList.toggle('on', state.hitT > 0); $('hit').classList.toggle('kill', state.hitKill); $('hit').classList.toggle('head', state.hitHead);$('hit').classList.toggle('armor',state.hitArmor&&state.hitT>0);$('armor-break').style.opacity=state.armorCueT>0?1:0;
   state.bannerT -= dt; if (state.bannerT <= 0) $('banner').style.opacity = 0;
 }
@@ -1395,7 +1412,7 @@ function updateHUD(dt) {
 // ------------------------------------------------------------------ main loop
 function update(dt) {
   if(network.role==='guest'&&state.hostPaused){updateCamera(dt);updateHUD(dt);return;}
-  iceCover.update(dt);
+  iceCover.update(dt);updateIcePreview(dt);
   state.time += dt; if (!P.dead) state.matchT += dt;
   updatePlayer(dt); updateAimAssist(dt); updateCamera(dt); handleShooting(dt); updateMelee(dt);
   if(state.gameMode!=='duel'){
@@ -1421,7 +1438,7 @@ function setGraphics(mode){
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
-  if((state.paused||state.mode!=='playing')&&now-last<140)return;
+  if((state.mode==='loading'||state.mode==='boot')){if(now-last<41)return;}else if((state.paused||state.mode!=='playing')&&now-last<140)return;
   if(touchDevice&&now-last<29)return;
   const elapsed=(now-last)/1000;
   const dt = Math.min(0.05, elapsed); last = now;
@@ -1440,6 +1457,7 @@ function frame(now) {
   const ambientOn = state.mode === 'playing' && !state.paused;
   if (state.ambientOn !== ambientOn) { state.ambientOn = ambientOn; setAmbience(ambientOn); }
   if(state.mode==='playing'&&!state.paused)update(dt);
+  if(state.mode==='loading'||state.mode==='boot'){loadingIntro.render(renderer,dt);return;}
   if(state.paused||state.mode!=='playing')return;
   renderer.clear();
   if (state.map && state.mode !== 'menu') {
@@ -1470,7 +1488,8 @@ function lock() {
     if(result?.catch)result.catch(mouseLockFailed);
   }catch {mouseLockFailed();}
 }
-function showPause() {setRunLock(false); if(network.role==='guest')network.action({kind:'interact',held:false});operations.input(false); for (const k in keys) keys[k] = false;touchMove.x=touchMove.y=0;state.paused = true; mouseDown = false;aimHeld=false;aimToggle=false;$('scope-overlay').classList.add('hidden');document.body.classList.remove('mobile-playing');$('pause').classList.remove('hidden'); }
+function showPause() {
+  cancelIcePreview();setRunLock(false); if(network.role==='guest')network.action({kind:'interact',held:false});operations.input(false); for (const k in keys) keys[k] = false;touchMove.x=touchMove.y=0;state.paused = true; mouseDown = false;aimHeld=false;aimToggle=false;$('scope-overlay').classList.add('hidden');document.body.classList.remove('mobile-playing');$('pause').classList.remove('hidden'); }
 
 function duelGuestSpawn(host){
   if(!state.map.open){const candidate=state.map.spawns.reduce((best,p)=>Math.hypot(p[0]-host.x,p[1]-host.z)>Math.hypot(best[0]-host.x,best[1]-host.z)?p:best,state.map.spawns[0]);return [candidate[0],0,candidate[1]];}
@@ -1491,9 +1510,9 @@ async function startGame(key,setup=null) {
   initAudio();
   state.mode='loading'; state.paused=true; document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=true);
   state.mapKey = key; showMapLoading(key,MAPS[key]); await tick();
-  try { await ensureCombatModels(); }
+  try { await ensureCombatModels(); loadingIntro.start();$('menu').classList.add('hidden'); }
   catch (error) {
-    $('map-loading').classList.add('hidden');
+    loadingIntro.stop();$('map-loading').classList.add('hidden');$('menu').classList.remove('hidden');
     $('loadtxt').textContent = 'Combat assets failed to load: ' + error.message;
     console.error(error);
     state.mode = 'menu';
@@ -1504,24 +1523,25 @@ async function startGame(key,setup=null) {
   loadMap(key); releaseUnusedMaps(key);
   loadingStage(state.map.open ? 'download' : 'collision', state.map.open ? `Connecting to ${state.map.name}…` : 'Preparing arena…');
   if (state.map.open) {
-    document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = true; }); $('menu').classList.remove('hidden'); $('over').classList.add('hidden');
-    try { await loadOpenWorld(state.map); } catch (e) { $('map-loading').classList.add('hidden'); $('loadtxt').textContent = 'Map failed to load: ' + e.message; console.error(e); state.mode='menu';state.paused=false;network.render(); return; }
+    document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = true; }); $('over').classList.add('hidden');
+    try { await loadOpenWorld(state.map); } catch (e) { loadingIntro.stop();$('map-loading').classList.add('hidden');$('menu').classList.remove('hidden'); $('loadtxt').textContent = 'Map failed to load: ' + e.message; console.error(e); state.mode='menu';state.paused=false;network.render(); return; }
     $('loadtxt').textContent = 'SYSTEM READY / SELECT YOUR DEPLOYMENT'; document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = false; });
   }
   if(setup){state.map.start=[setup.spawn[0],setup.spawn[2]];state.map.startY=setup.spawn[1];}
-  $('menu').classList.remove('hidden'); loadingStage('collision','Preparing field architecture and collision…');
+  loadingStage('collision','Preparing field architecture and collision…');
   await tick();
   try { await dressMap(state,floorAt,buildCollision); }
   catch(e) { console.warn('Map dressing failed',e); }
   loadingStage('prepare','Preparing your operator…');
   try { playerAvatar=await buildHero();state.world.add(playerAvatar.root);playerAvatar.root.visible=false; }
   catch(e) { console.warn('Hero model unavailable',e); }
+  loadingStage('prepare','Deployment ready · skip the intro to enter now');await loadingIntro.finish();
   document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=false);
   WEAPONS.forEach((w, i) => { ws[i] = { ammo: w.mag, reserve: w.reserve }; }); CFG.gun = WEAPONS[0]; setWeaponVisual(0);
   state.floaters = []; $('floaters').innerHTML = ''; for (const k in up) up[k] = 0;
   Object.assign(state, { credits: 0, shopOpen: false, bossQueued: false }); $('shop').classList.add('hidden'); $('bossbar').classList.add('hidden');
   Object.assign(state, { shots: 0, hits: 0, heads: 0, matchT: 0, hitHead: false });
-  iceCover.reset();
+  cancelIcePreview();iceCover.reset();
   Object.assign(P, { unarmed:false,hp: 100, ammo: CFG.gun.mag, reserve: CFG.gun.reserve, maxHp: 100, reloadDur: 2, c4: CFG.c4.start, fireCd: 0, reloading: 0, dead: false, deadT: 0, kick: 0, bob: 0, onGround: true, jumping:false,jumpHeld:false, gk: 0, pitch: 0, weapon: 0, won: false });
   setRunLock(false);meleeTimer=meleeContact=rifleAnimTimer=0;attackName='';attackSeq=0;meleeIndex=0;
   const heroConfig=selectedHero();P.hp=P.maxHp=heroConfig.hp;CFG.walk=heroConfig.speed;CFG.sprint=heroConfig.speed*1.58;
@@ -1536,7 +1556,7 @@ async function startGame(key,setup=null) {
   Object.assign(state, { score: 0, kills: 0, hurt: 0, shake: 0, hitT: 0, hitArmor:false, armorCueT:0, flashT: 0, paused: false, mode: 'playing' });
   if(state.map.open)streamMapCollision(mapCache[key]);
   for (const k in keys) keys[k] = false; mouseDown = false;
-  $('menu').classList.add('hidden'); $('map-loading').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('hud').classList.remove('hidden');$('mobile-controls').classList.toggle('hidden',!touchDevice);
+  $('menu').classList.add('hidden'); loadingIntro.stop();$('map-loading').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('hud').classList.remove('hidden');$('mobile-controls').classList.toggle('hidden',!touchDevice);
   if(state.gameMode==='duel'){
     if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),guestSpawn:duelGuestSpawn(P.pos),gameMode:'duel',difficulty:state.difficulty});
     if(pendingDuelState){applyDuelState(pendingDuelState);pendingDuelState=null;}
@@ -1576,7 +1596,7 @@ stick.addEventListener('pointerdown',e=>{if(document.body.classList.contains('hu
 stick.addEventListener('pointermove',e=>{if(e.pointerId!==stickPointer)return;const r=stick.getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,length=Math.max(1,Math.hypot(dx,dy)),reach=Math.min(1,length/(r.width*.36));touchMove.x=dx/length*reach;touchMove.y=dy/length*reach;knob.style.transform=`translate(calc(-50% + ${touchMove.x*38}px),calc(-50% + ${touchMove.y*38}px))`;});
 for(const event of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(event,e=>{if(e.pointerId===stickPointer)resetStick();});
 look.addEventListener('pointerdown',e=>{if(!touchDevice||state.paused||lookPointer!==null)return;e.preventDefault();lookPointer=e.pointerId;lookX=e.clientX;lookY=e.clientY;look.setPointerCapture(e.pointerId);});
-look.addEventListener('pointermove',e=>{if(e.pointerId!==lookPointer||state.paused||P.dead)return;const dx=e.clientX-lookX,dy=e.clientY-lookY;lookX=e.clientX;lookY=e.clientY;aimAssistTime=0;P.yaw-=dx*.003;P.pitch=clamp(P.pitch-dy*.003,-1.5,1.5);});
+look.addEventListener('pointermove',e=>{if(e.pointerId!==lookPointer||state.paused||P.dead)return;const dx=e.clientX-lookX,dy=e.clientY-lookY;lookX=e.clientX;lookY=e.clientY;aimAssistTime=0;const sensitivity=.003*(isAiming()?aimSettings.scope:aimSettings.camera);P.yaw-=dx*sensitivity;P.pitch=clamp(P.pitch-dy*sensitivity,-1.5,1.5);});
 for(const event of ['pointerup','pointercancel','lostpointercapture'])look.addEventListener(event,e=>{if(e.pointerId===lookPointer)lookPointer=null;});
 function touchAction(action,down){
   if(action==='fire')mouseDown=down;
@@ -1654,21 +1674,25 @@ function defenderSpot(radius) {
     clearFallback ||= p;
   } return clearFallback;
 }
-const iceCover=createIceCover(state);
-function deployIceFor(pos,yaw,owner){
+const iceCover=createIceCover(state);let icePlacement=false,icePreviewT=0;
+function icePosition(pos,yaw){
   const center=new THREE.Vector3(pos.x-Math.sin(yaw)*3.3,pos.y,pos.z-Math.cos(yaw)*3.3);
   if(fieldBlocked(center.x,center.z,.7))return false;
   if(state.collMesh){const y=floorAt(center.x,center.z,pos.y+1.2,3);if(y===null||Math.abs(y-pos.y)>.7)return false;center.y=y;}
   for(const side of [-1,1]){const x=center.x+Math.cos(yaw)*side*2.3,z=center.z-Math.sin(yaw)*side*2.3;if(fieldBlocked(x,z,.5)||waterAt(x,z,center.y))return false;}
-  return iceCover.deploy(center,yaw,owner,state.time);
+  return center;
 }
+function deployIceFor(pos,yaw,owner){const center=icePosition(pos,yaw);return !!center&&iceCover.deploy(center,yaw,owner,state.time);}
+function updateIcePreview(dt){if(!icePlacement)return;icePreviewT-=dt;if(icePreviewT>0)return;icePreviewT=.1;const p=icePosition(P.pos,P.yaw),fallback=new THREE.Vector3(P.pos.x-Math.sin(P.yaw)*3.3,P.pos.y,P.pos.z-Math.cos(P.yaw)*3.3);iceCover.preview(p||fallback,P.yaw,!!p);}
+function cancelIcePreview(){icePlacement=false;iceCover.preview(null);}
 function deployIce(){
   if(state.mode!=='playing'||state.paused||P.dead)return;
   if(state.gameMode==='duel'){banner('ICE COVER IS AVAILABLE IN SOLO AND CO-OP');return;}
-  if(network.role==='guest'){network.action({kind:'ice'});return;}
+  if(!icePlacement){icePlacement=true;icePreviewT=0;banner('PLACE ICE · FIRE OR B / ICE TO CONFIRM');return;}
+  if(network.role==='guest'){network.action({kind:'ice'});cancelIcePreview();return;}
   const left=iceCover.remaining('local',state.time);
   if(left>0){banner('ICE COVER READY IN '+Math.ceil(left)+'s');return;}
-  banner(deployIceFor(P.pos,P.yaw,'local')?'ICE COVER · 18 SECONDS':'NEED CLEAR, LEVEL GROUND AHEAD');
+  const placed=deployIceFor(P.pos,P.yaw,'local');if(placed)cancelIcePreview();banner(placed?'ICE COVER · 18 SECONDS':'NEED CLEAR, LEVEL GROUND AHEAD');
 }
 const operations=createOperations({ state,P,camera,floorAt,clearPath:fieldPath,blocked:fieldBlocked,banner,
   touchDevice,
@@ -1743,10 +1767,11 @@ function coopAction(id,a){
   if(network.role!=='host'||state.mode!=='playing')return;
   const player=network.players.get(id)?.position;if(!player?.active||player.hp<=0)return;
   const pos=new THREE.Vector3(...player.pos);
+  if(a.kind==='ice-hit'){const w=iceCover.walls.find(w=>w.id===a.id);if(w&&Math.hypot(w.x-pos.x,w.z-pos.z)<250)iceCover.damage(a.id,Math.min(25,a.damage||0));return;}
   if(a.kind==='ice'){deployIceFor(pos,player.yaw,id);return;}
   if(a.kind==='interact'){remoteHeld.set(id,!!a.held);return;}
   if(a.kind==='pickup'){operations.claim(a.id,id,pos);return;}
-  if(a.kind==='shot'&&Array.isArray(a.end)){const from=new THREE.Vector3(...a.pos),end=new THREE.Vector3(...a.end);if(from.distanceTo(pos)<8&&from.distanceTo(end)<300){addTracer(from,end);remoteShotSound(from,a.weapon);network.effect({kind:'shot',pos:a.pos,end:a.end,owner:id,weapon:a.weapon===1?1:0});}return;}
+  if(a.kind==='shot'&&Array.isArray(a.end)){const from=new THREE.Vector3(...a.pos),end=new THREE.Vector3(...a.end);if(from.distanceTo(pos)<8&&from.distanceTo(end)<300){addTracer(from,end);reactToShot(from,end);remoteShotSound(from,a.weapon);network.effect({kind:'shot',pos:a.pos,end:a.end,owner:id,weapon:a.weapon===1?1:0});}return;}
   if(a.kind==='melee'){const now=performance.now();if(now-(remoteMelee.get(id)||0)<MELEE_COOLDOWN*900)return;remoteMelee.set(id,now);applyMeleeDamage(pos,player.yaw);return;}
   const before={score:state.score,credits:state.credits,kills:state.kills};
   if(a.kind==='hit'){const m=state.monsters.find(m=>m.id===a.id&&!m.dead);if(m&&Math.hypot(m.x-pos.x,m.z-pos.z)<270)damageMonster(m,a.damage,new THREE.Vector3(...a.pos),!!a.gib,!!a.head);}
@@ -1784,6 +1809,28 @@ const network=createNetwork({
 
 // menu
 installMenuClicks();
+for(const key of ['camera','scope','strength']){const input=$('aim-'+key),output=$('aim-'+key+'-value');input.value=aimSettings[key];output.textContent=Math.round(aimSettings[key]*100)+'%';input.addEventListener('input',()=>{aimSettings[key]=Number(input.value);output.textContent=Math.round(aimSettings[key]*100)+'%';localStorage.setItem('riftwatch-aim-settings',JSON.stringify(aimSettings));});}
+$('gyro-toggle').disabled=false;
+$('gyro-toggle').addEventListener('click',async()=>{
+ if(gyroEnabled){gyroEnabled=false;$('gyro-toggle').setAttribute('aria-pressed','false');$('gyro-status').textContent='Gyro off';return;}
+ if(!window.isSecureContext||!window.DeviceMotionEvent){$('gyro-status').textContent='Gyro unavailable on this device or connection';return;}
+ try{const requests=[];if(typeof DeviceMotionEvent.requestPermission==='function')requests.push(DeviceMotionEvent.requestPermission());if(typeof window.DeviceOrientationEvent?.requestPermission==='function')requests.push(DeviceOrientationEvent.requestPermission());if((await Promise.all(requests)).some(p=>p!=='granted'))throw Error('denied');gyroEnabled=true;gyroLast=0;gyroMotionAt=0;gyroOrientation=null;$('gyro-toggle').setAttribute('aria-pressed','true');$('gyro-status').textContent='Waiting for motion sensor…';setTimeout(()=>{if(gyroEnabled&&!gyroLast){gyroEnabled=false;$('gyro-toggle').setAttribute('aria-pressed','false');$('gyro-status').textContent='No sensor data received. Gyro needs motion hardware and browser sensor access.';}},2500);}catch{$('gyro-status').textContent='Motion permission not granted';}
+});
+addEventListener('devicemotion',e=>{
+ if(!gyroEnabled)return;
+ if(!e.rotationRate||!Number.isFinite(e.rotationRate.beta)||!Number.isFinite(e.rotationRate.gamma))return;
+ const now=performance.now(),dt=gyroLast?(now-gyroLast)/1000:0;gyroLast=now;gyroMotionAt=now;
+ if($('gyro-status').textContent!=='Gyro active')$('gyro-status').textContent='Gyro active';if(state.mode!=='playing'||state.paused||P.dead||document.hidden)return;
+ const delta=gyroDelta(e.rotationRate,screen.orientation?.angle||0,dt,isAiming()?aimSettings.scope:aimSettings.camera);
+ P.yaw-=delta.yaw;P.pitch=clamp(P.pitch+delta.pitch,-1.5,1.5);if(Math.abs(delta.yaw)+Math.abs(delta.pitch)>.001)aimAssistTime=0;
+});
+addEventListener('deviceorientation',e=>{
+ if(!gyroEnabled||!Number.isFinite(e.beta)||!Number.isFinite(e.gamma))return;const now=performance.now();if(now-gyroMotionAt<500)return;
+ const previous=gyroOrientation;gyroOrientation={beta:e.beta,gamma:e.gamma,time:now};gyroLast=now;$('gyro-status').textContent='Gyro active · orientation sensor';
+ if(!previous||state.mode!=='playing'||state.paused||P.dead||document.hidden)return;
+ const dt=(now-previous.time)/1000;if(dt<=0||dt>.2)return;const wrap=d=>((d+540)%360)-180,db=wrap(e.beta-previous.beta),dg=wrap(e.gamma-previous.gamma);if(Math.abs(db)>15||Math.abs(dg)>15)return;
+ const delta=gyroDelta({beta:db/dt,gamma:dg/dt},screen.orientation?.angle||0,dt,isAiming()?aimSettings.scope:aimSettings.camera);P.yaw-=delta.yaw;P.pitch=clamp(P.pitch+delta.pitch,-1.5,1.5);if(Math.abs(delta.yaw)+Math.abs(delta.pitch)>.001)aimAssistTime=0;
+});
 $('aim-assist-setting').checked=aimAssistEnabled;$('aim-assist-setting').addEventListener('change',e=>{aimAssistEnabled=e.target.checked;localStorage.setItem('riftwatch-aim-assist',aimAssistEnabled?'on':'off');});
 document.querySelectorAll('.graphicsbtn').forEach(b=>b.addEventListener('click',()=>setGraphics(b.dataset.graphics)));
 document.querySelectorAll('.scopebtn').forEach(b=>{b.classList.toggle('sel',(b.dataset.scope==='on')===scopeEffect);b.addEventListener('click',()=>{scopeEffect=b.dataset.scope==='on';localStorage.setItem('riftwatch-scope',scopeEffect?'on':'off');document.querySelectorAll('.scopebtn').forEach(x=>x.classList.toggle('sel',x===b));$('scope-overlay').classList.toggle('hidden',!scopeEffect||!isAiming()||state.paused);});});
@@ -1818,3 +1865,16 @@ $('loadtxt').textContent = 'SYSTEM READY / SELECT YOUR DEPLOYMENT';
 document.querySelectorAll('.mapbtn').forEach(b => { b.disabled = false; });
 network.render();
 requestAnimationFrame(frame);
+
+// Startup and map loading share assets. Skipping the startup film never cancels
+// or restarts those downloads, and never marks an unfinished map as playable.
+let bootIntroActive=false;
+$('skip-intro').addEventListener('click',()=>{if(!bootIntroActive)return;bootIntroActive=false;state.mode='menu';state.paused=false;$('map-loading').classList.add('hidden');$('menu').classList.remove('hidden');});
+async function playStartupIntro(){
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ bootIntroActive=true;state.mode='boot';loadingIntro.begin();$('map-loading').classList.remove('hidden');$('menu').classList.add('hidden');$('loading-map-name').textContent='RIFTWATCH';$('loading-map-desc').textContent='Preparing your next deployment';loadingStage('models','Loading combat assets…');
+ try{await ensureCombatModels();if(!bootIntroActive)return;loadingIntro.start();$('loading-status').textContent='Game ready · skip to enter the menu';await loadingIntro.finish();}
+ catch(e){console.warn('Startup intro unavailable',e);}
+ if(!bootIntroActive)return;bootIntroActive=false;loadingIntro.stop();state.mode='menu';state.paused=false;$('map-loading').classList.add('hidden');$('menu').classList.remove('hidden');$('loadtxt').textContent='SYSTEM READY / SELECT YOUR DEPLOYMENT';
+}
+playStartupIntro();

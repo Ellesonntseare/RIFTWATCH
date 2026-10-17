@@ -67,11 +67,14 @@ function initializeCinematicMenu() {
         <button class="rw-mission-button" type="button" data-rw-open="maps"><small>NEXT OPERATION</small><strong>SELECT DEPLOYMENT ↗</strong></button>
       </aside>
     </main>
+    <details class="rw-deployment" open>
+    <summary>SELECT YOUR DEPLOYMENT</summary>
     <footer class="rw-footer">
       <div class="rw-status"><span>▤</span><div id="rw-status-slot"></div></div>
       <button type="button" class="rw-squad-button" data-rw-open="squad"><span class="rw-avatar">RW</span><span class="rw-avatar">+</span><span class="rw-avatar">+</span><b>SQUAD / INVITE ↗</b></button>
       <button type="button" class="rw-deploy" data-rw-open="maps">SELECT MAP <span>↗</span></button>
     </footer>
+    </details>
     <div class="rw-dialog hidden" id="rw-dialog" role="dialog" aria-modal="true" aria-labelledby="rw-dialog-heading">
       <div class="rw-dialog-backdrop" data-rw-close></div>
       <section class="rw-dialog-inner">

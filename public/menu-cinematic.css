@@ -302,3 +302,55 @@ body.rw-game-visible #voice-hud {display:none}
 #menu.rw-menu #maps .mapbtn:disabled {opacity:.38}
 @keyframes rw-map-enter {from{opacity:.5;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){#menu.rw-menu #maps .mapbtn {animation:none;transition:none}}
+
+/* Menu must stretch: the generic overlay centers its children. */
+#menu.rw-menu{align-items:stretch;justify-content:flex-start;gap:0;box-sizing:border-box;width:100%;max-width:100%;transform:none}
+#menu .rw-deployment{flex:none;min-width:0;background:#05121f;z-index:5}
+#menu .rw-deployment>summary{cursor:pointer;padding:8px 3%;color:#a8edf2;font:11px Consolas,monospace;border-top:1px solid #3d7a8e;min-height:32px}
+#menu .rw-deployment .rw-footer{position:static}
+body.phone-device #menu.rw-menu{inset:0!important;width:100%;height:100dvh!important;max-height:100dvh;transform:none;overflow:hidden!important;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+body.phone-device #menu .rw-stage{overflow-y:auto;min-height:0;flex:1;touch-action:pan-y}
+body.phone-device #menu .rw-dialog{position:absolute;inset:0;padding:0}
+body.phone-device #menu .rw-dialog-inner{height:100%;max-height:100%;width:100%;min-height:0}
+body.phone-device #menu .rw-dialog-panel{overflow-y:auto;min-height:0;padding-bottom:30px;touch-action:pan-y}
+body.phone-device #menu .aim-tuning{width:100%;flex-direction:column;align-items:stretch}
+body.phone-device #menu .aim-tuning label{justify-content:space-between;min-height:44px}
+body.phone-device #menu .aim-tuning input{width:45%;min-height:40px}
+@media(orientation:landscape) and (max-height:600px){
+#menu.rw-menu .rw-topbar{grid-template-columns:auto minmax(0,1fr);min-height:46px;padding:0 2%;gap:12px}
+#menu.rw-menu .rw-profile{display:none}
+#menu.rw-menu .rw-topnav{grid-column:auto;grid-row:auto;width:100%;height:46px;gap:6px;justify-content:space-evenly;overflow:visible}
+#menu.rw-menu .rw-top-link{min-height:44px;font-size:10px;letter-spacing:0;padding:0 4px}
+#menu.rw-menu .rw-logo{font-size:10px;gap:5px}
+#menu.rw-menu .rw-stage{flex:1;min-height:0;height:auto;overflow-y:auto;grid-template-columns:minmax(0,30fr) minmax(0,38fr) minmax(0,32fr);grid-template-areas:'left center right';gap:12px;padding:8px 2%;touch-action:pan-y}
+#menu.rw-menu .rw-left{grid-area:left;min-width:0}
+#menu.rw-menu .rw-center{grid-area:center;min-height:200px;height:auto}
+#menu.rw-menu .rw-right{grid-area:right;min-width:0;gap:6px;padding:0}
+#menu.rw-menu .rw-title,#menu.rw-menu .rw-promo,#menu.rw-menu .rw-rank,#menu.rw-menu .rw-mission-panel,#menu.rw-menu .rw-mission-button{display:none}
+#menu.rw-menu .rw-select{margin:0}
+#menu.rw-menu .rw-panel-heading{padding-bottom:4px;font-size:10px}
+#menu.rw-menu .rw-panel-heading small{display:none}
+#menu.rw-menu #modes{display:flex;flex-direction:column;gap:4px;margin-top:5px}
+#menu.rw-menu #modes .modebtn{min-height:44px;padding:5px 9px;font-size:11px;flex-shrink:0}
+#menu.rw-menu #modes .modebtn small{font-size:9px;margin-top:2px}
+#menu.rw-menu #rw-mode-description{margin:5px 0;font-size:9px;min-height:0}
+#menu.rw-menu .rw-stat-panel{padding:0 10px 8px}
+#menu.rw-menu .rw-card-title{min-height:28px;font-size:9px}
+#menu.rw-menu .rw-card-title small{display:none}
+#menu.rw-menu .rw-unit{padding:8px 0}
+#menu.rw-menu .rw-meter-item{padding-top:9px}
+#menu.rw-menu .rw-trait{margin-top:8px;padding-top:8px}
+#menu.rw-menu #rw-hero-stage{inset:0}
+#menu.rw-menu .rw-hero-caption{bottom:45px}
+#menu.rw-menu .rw-hero-caption strong{font-size:16px}
+#menu.rw-menu .rw-change{bottom:0;right:0;min-height:40px;font-size:9px}
+#menu.rw-menu .rw-footer{grid-template-columns:minmax(0,1fr) auto;min-height:48px;gap:10px;padding:3px 2%}
+#menu.rw-menu .rw-status{display:none}
+#menu.rw-menu .rw-squad-button{grid-column:1}
+#menu.rw-menu .rw-squad-button b{margin-left:5px;font-size:9px}
+#menu.rw-menu .rw-deploy{grid-column:2;min-width:140px;min-height:42px}
+#menu.rw-menu .rw-dialog{padding:0}
+#menu.rw-menu .rw-dialog-inner{height:100%;max-height:100%;width:100%}
+#menu.rw-menu .rw-dialog-inner>header{padding:8px 16px;flex-shrink:0}
+#menu.rw-menu .rw-dialog-inner>header h2{font-size:18px;margin:2px 0}
+}

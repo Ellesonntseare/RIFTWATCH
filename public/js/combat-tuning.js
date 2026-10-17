@@ -1,0 +1,4 @@
+export const weaponFeel=[{recovery:16,side:.0012,kick:.010,view:26},{recovery:20,side:.00065,kick:.006,view:30}];
+export function reloadPose(progress){const p=Math.max(0,Math.min(1,progress));return {lower:Math.sin(p*Math.PI),magazine:Math.sin(Math.max(0,Math.min(1,(p-.12)/.64))*Math.PI)};}
+export function gyroDelta(rate,angle,dt,sensitivity=1){if(!rate||![rate.beta,rate.gamma].every(Number.isFinite))return {yaw:0,pitch:0};const a=angle*Math.PI/180,k=Math.PI/180*Math.min(.05,Math.max(0,dt))*sensitivity;return {yaw:(rate.beta*Math.sin(a)+rate.gamma*Math.cos(a))*k,pitch:(rate.beta*Math.cos(a)-rate.gamma*Math.sin(a))*k};}
+export function steerAround(dx,dz,clear,preferred=1){const length=Math.hypot(dx,dz)||1,x=dx/length,z=dz/length;for(const a of [0,.55*preferred,-.55*preferred,1.05*preferred,-1.05*preferred,1.57*preferred,-1.57*preferred,2.1*preferred]){const c=Math.cos(a),s=Math.sin(a),nx=x*c-z*s,nz=x*s+z*c;if(clear(nx,nz))return {x:nx,z:nz};}return {x:0,z:0};}

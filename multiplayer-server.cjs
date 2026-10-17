@@ -133,7 +133,7 @@ function attachMultiplayer(server){
       }
       if(m.type==='action'&&peer.id!==room.host&&m.action&&typeof m.action==='object'){
         const a=m.action;
-        if(!['hit','barrel','interact','pickup','explosion','shot','respawn','melee','ice'].includes(a.kind))return;
+        if(!['hit','barrel','interact','pickup','explosion','shot','respawn','melee','ice','ice-hit'].includes(a.kind))return;
         if(a.damage!==undefined&&(!Number.isFinite(a.damage)||a.damage<0||a.damage>600))return;
         if(a.pos!==undefined&&!vector(a.pos))return;
         send(room.peers.get(room.host).ws,'action',{id:peer.id,action:a});return;

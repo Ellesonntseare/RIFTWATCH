@@ -67,9 +67,9 @@ export function createHeroMotion(model,root,clips){
   let active=null,oneShot=null,remaining=0,wasJumping=false,wasDead=false,deathTime=0,deathFloor=0,groundCorpse,deathSettled=false,corpseOffset=0;
   function play(name,duration){
     const action=actions[name];if(!action)return false;
-    if(name!=='fireRifle'&&name!=='throw'&&active){actions[active].fadeOut(.1);active=null;}
+    if(!['fireRifle','throw','punch'].includes(name)&&active){actions[active].fadeOut(.1);active=null;}
     if(oneShot)actions[oneShot].fadeOut(.1);
-    action.reset().setLoop(THREE.LoopOnce,1).setEffectiveWeight(1).fadeIn(.1).play();
+    action.reset().setLoop(THREE.LoopOnce,1).setEffectiveWeight(1).fadeIn(.12).play();action.clampWhenFinished=true;
     action.timeScale=duration?clips[name].duration/duration:1;
     oneShot=name;remaining=duration||clips[name].duration;if(name==='punch')punchDuration=remaining;return true;
   }
@@ -82,11 +82,11 @@ export function createHeroMotion(model,root,clips){
     if(jumping&&!wasJumping)play('jump',.65);
     wasJumping=jumping;
     if(!airborne&&oneShot==='jump'){actions.jump.fadeOut(.12);oneShot=null;}
-    if(oneShot){remaining-=dt;if(remaining<=.16){actions[oneShot].fadeOut(.15);oneShot=null;}}
-    const blocksLocomotion=oneShot&&!['fireRifle','throw'].includes(oneShot);
+    if(oneShot){remaining-=dt;if(remaining<=.16&&!(oneShot==='jump'&&airborne)){actions[oneShot].fadeOut(.15);oneShot=null;}}
+    const blocksLocomotion=oneShot&&!['fireRifle','throw','punch'].includes(oneShot);
     const desired=blocksLocomotion?null:moving?(lateral&&actions.strafe?'strafe':(running??speed>7)&&actions.run?'run':'walk'):(actions.idle?'idle':null);
-    if(desired!==active){if(active)actions[active].fadeOut(.15);if(desired)actions[desired].reset().setEffectiveWeight(1).fadeIn(.15).play();active=desired;}
-    if(active&&active!=='idle')actions[active].timeScale=THREE.MathUtils.clamp((speed||4)/(active==='run'?8:4),.6,1.65);
+    if(desired!==active){if(active)actions[active].fadeOut(.15);if(desired){const previous=active?actions[active]:null,phase=previous?previous.time/previous.getClip().duration:0;const next=actions[desired];next.reset();if(previous&&['walk','run','strafe'].includes(active))next.time=(phase%1)*next.getClip().duration;next.setEffectiveWeight(1).fadeIn(.22).play();}active=desired;}
+    if(active&&active!=='idle')actions[active].timeScale+=(THREE.MathUtils.clamp((speed||4)/(active==='run'?8:4),.6,1.65)-actions[active].timeScale)*(1-Math.exp(-dt*10));
     update.handsBusy=!!oneShot&&oneShot!=='fireRifle';
     mixer.update(dt);
     if(oneShot==='punch'){
