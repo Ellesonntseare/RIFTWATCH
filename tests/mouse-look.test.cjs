@@ -3,7 +3,7 @@ const main=fs.readFileSync('public/js/main.js','utf8');
 const source=main.slice(main.indexOf('function mouseLockFailed()'),main.indexOf('async function startGame'));
 function setup(request){
  const state={mode:'playing',paused:true,shopOpen:false},document={pointerLockElement:null,body:{classList:{remove(){},add(){}}}},canvas={requestPointerLock:request},status={textContent:''},keys={};
- const factory=new Function('state','document','renderer','$','network','operations','keys','touchDevice','touchMove',`let locked=false,mouseDown=false,aimHeld=false,aimToggle=false;${source};return {lock,mouseLockFailed,get locked(){return locked}};`);
+ const factory=new Function('state','document','renderer','$','network','operations','keys','touchDevice','touchMove',`function setRunLock(){};let locked=false,mouseDown=false,aimHeld=false,aimToggle=false;${source};return {lock,mouseLockFailed,get locked(){return locked}};`);
  const controls=factory(state,document,{domElement:canvas},()=>({textContent:'',classList:{add(){},remove(){}},...status}),{role:null},{input(){}},keys,false,{x:0,y:0});
  return {state,document,canvas,controls};
 }

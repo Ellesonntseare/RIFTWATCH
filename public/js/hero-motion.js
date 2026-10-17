@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone,retargetClip} from 'three/addons/utils/SkeletonUtils.js';
 import {createFootGrounding} from './foot-grounding.js';
+import {createWeaponGrip} from './arm-ik.js';
+import {createCorpseGrounding} from './corpse-grounding.js';
 const cache=new Map();let source,movementSource;
 export const MOVEMENT_PACK_URL='/models/mixamo-movement-pack.glb?v=20261015-14';
 export const MOVEMENT_PREVIEWS=[
@@ -26,8 +28,11 @@ export async function heroMotionClips(file,targetTemplate,sourceTemplate=null,mo
     catch(error){console.warn('Optional movement pack unavailable',error);}
     target.updateMatrixWorld(true);
     const result={};
-    const soldierModes=[['walk','walk'],['run','run']];
-    const movementModes=full?MOVEMENT_PREVIEWS:MOVEMENT_PREVIEWS.filter(([mode])=>mode==='jump'||COMBAT_MOVES.includes(mode));
+    // The equipped soldier's locomotion and rifle clips retain a planted gun pose.
+    // The showcase pack's jump and gunfire twist the whole body during combat.
+    const soldierModes=[['walk','walk'],['run','run'],['jump','jump'],['strafe','strafeRight'],['fireRifle','shooting'],['death','death']];
+    const movementModes=(full?MOVEMENT_PREVIEWS:MOVEMENT_PREVIEWS.filter(([mode])=>['startWalk',...COMBAT_MOVES].includes(mode)))
+      .filter(([mode])=>!['jump','strafe','fireRifle'].includes(mode));
     for(const [asset,modes] of [[donor,soldierModes],...(movementDonor?[[movementDonor,movementModes]]:[])]){
       const actor=clone(asset.scene);actor.updateMatrixWorld(true);
       const targetSkin=firstSkin(target),sourceSkin=firstSkin(actor);if(!targetSkin||!sourceSkin)continue;
@@ -42,20 +47,13 @@ export async function heroMotionClips(file,targetTemplate,sourceTemplate=null,mo
         const clip=retargetClip(targetSkin,sourceSkin,original,{names,localOffsets,hip:sourceNames.get('hips'),fps:30,useFirstFramePosition:true,preserveBonePositions:true});
         clip.name='Hero '+mode;
         // Position is controlled by the player physics. Walk/run keep the gun pose.
-        clip.tracks=clip.tracks.filter(t=>/\.quaternion$/.test(t.name)&&(mode!=='walk'&&mode!=='run'||/(UpLeg|LeftLeg|RightLeg|Foot|Toe)/i.test(t.name)));
+        clip.tracks=clip.tracks.filter(t=>/\.quaternion$/.test(t.name)&&(
+          mode==='fireRifle'||mode==='throw'||mode==='punch'?/(Spine|Chest|Neck|Head|Shoulder|Arm|Hand|Finger)/i.test(t.name):
+          !['walk','run','strafe','startWalk','jump'].includes(mode)||/(UpLeg|LeftLeg|RightLeg|Foot|Toe)/i.test(t.name)
+        ));
         for(const track of clip.tracks)track.name=track.name.replace(/^\.bones\[([^\]]+)\]/,'$1');
         if(clip.tracks.length)result[mode]=clip;
       }
-    }
-    if(file==='mixamo-movement-pack.glb'){
-      // The supplied mannequin has no idle clip. Use its bind pose with
-      // lowered arms, while leaving its authored leg stance undisturbed.
-      const tracks=firstSkin(target).skeleton.bones.map(bone=>{
-        const pose=bone.quaternion.clone();
-        if(/mixamorig(?:Left|Right)Arm$/.test(bone.name))pose.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),1));
-        return new THREE.QuaternionKeyframeTrack(bone.name+'.quaternion',[0,1],[...pose.toArray(),...pose.toArray()]);
-      });
-      result.idle=new THREE.AnimationClip('Hero idle',1,tracks);
     }
     return result;
   })().catch(e=>{console.warn('Hero animation retarget',e.message);return {};});
@@ -64,24 +62,39 @@ export async function heroMotionClips(file,targetTemplate,sourceTemplate=null,mo
 export function createHeroMotion(model,root,clips){
   const mixer=new THREE.AnimationMixer(model),actions={};
   for(const [name,clip]of Object.entries(clips))actions[name]=mixer.clipAction(clip);
-  const groundFeet=createFootGrounding(model,root);
-  let active=null,oneShot=null,remaining=0,wasAirborne=false;
+  const groundFeet=createFootGrounding(model,root),punchGrip=createWeaponGrip(model,root);
+  const punchRight=new THREE.Vector3(),punchLeft=new THREE.Vector3();let punchDuration=.65;
+  let active=null,oneShot=null,remaining=0,wasJumping=false,wasDead=false,deathTime=0,deathFloor=0,groundCorpse,deathSettled=false,corpseOffset=0;
   function play(name,duration){
     const action=actions[name];if(!action)return false;
-    if(active){actions[active].fadeOut(.1);active=null;}
+    if(name!=='fireRifle'&&name!=='throw'&&active){actions[active].fadeOut(.1);active=null;}
     if(oneShot)actions[oneShot].fadeOut(.1);
     action.reset().setLoop(THREE.LoopOnce,1).setEffectiveWeight(1).fadeIn(.1).play();
     action.timeScale=duration?clips[name].duration/duration:1;
-    oneShot=name;remaining=duration||clips[name].duration;return true;
+    oneShot=name;remaining=duration||clips[name].duration;if(name==='punch')punchDuration=remaining;return true;
   }
-  const update=(dt,moving,speed,{airborne=false}={})=>{
-    if(airborne&&!wasAirborne)play('jump');
-    wasAirborne=airborne;
+  const update=(dt,moving,speed,{airborne=false,lateral=false,jumping=false,running,dead=false}={})=>{
+    if(dead){
+      if(!wasDead){deathSettled=false;deathTime=0;deathFloor=root.position.y;mixer.stopAllAction();active=null;oneShot=null;if(actions.death){actions.death.reset().setLoop(THREE.LoopOnce,1).play();actions.death.clampWhenFinished=true;}groundCorpse ||= createCorpseGrounding(model,root);}
+      wasDead=true;update.handsBusy=true;if(deathSettled){root.position.y=deathFloor+corpseOffset;return;}deathTime+=dt;mixer.update(dt);deathSettled=deathTime>=(clips.death?.duration||1.5);groundCorpse(deathFloor,deathSettled);corpseOffset=root.position.y-deathFloor;return;
+    }
+    if(wasDead){mixer.stopAllAction();wasDead=false;active=null;oneShot=null;}
+    if(jumping&&!wasJumping)play('jump',.65);
+    wasJumping=jumping;
+    if(!airborne&&oneShot==='jump'){actions.jump.fadeOut(.12);oneShot=null;}
     if(oneShot){remaining-=dt;if(remaining<=.16){actions[oneShot].fadeOut(.15);oneShot=null;}}
-    const desired=oneShot?null:moving?(speed>7&&actions.run?'run':'walk'):(actions.idle?'idle':null);
+    const blocksLocomotion=oneShot&&!['fireRifle','throw'].includes(oneShot);
+    const desired=blocksLocomotion?null:moving?(lateral&&actions.strafe?'strafe':(running??speed>7)&&actions.run?'run':'walk'):(actions.idle?'idle':null);
     if(desired!==active){if(active)actions[active].fadeOut(.15);if(desired)actions[desired].reset().setEffectiveWeight(1).fadeIn(.15).play();active=desired;}
     if(active&&active!=='idle')actions[active].timeScale=THREE.MathUtils.clamp((speed||4)/(active==='run'?8:4),.6,1.65);
-    mixer.update(dt);if(!airborne&&!oneShot)groundFeet();
+    update.handsBusy=!!oneShot&&oneShot!=='fireRifle';
+    mixer.update(dt);
+    if(oneShot==='punch'){
+      const phase=1-remaining/punchDuration,extension=Math.max(0,Math.sin(Math.min(1,phase/.68)*Math.PI));
+      punchRight.set(-.18+extension*.08,1.34,.23+extension*.53);punchLeft.set(.24,1.28,.25);
+      punchGrip(punchRight,punchLeft);
+    }
+    if(!airborne&&(!oneShot||['punch','fireRifle','throw'].includes(oneShot)))groundFeet();
   };
   update.play=play;
   return update;

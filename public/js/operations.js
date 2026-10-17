@@ -3,12 +3,12 @@ import * as THREE from 'three';
 // Field operations own their objects; the combat simulation supplies world queries.
 export function createOperations(api) {
   const { state, P, floorAt, clearPath, blocked, banner, reward, refill, sound } = api;
-  const colors = { gun0:0x91ddff,gun1:0xcbabff,med: 0x72f5ac, ammo: 0x72dfff, cache: 0xffc778, supply:0xffdb82, damage: 0xff7b66, speed: 0xabb2ff, shield: 0x72f5e6, c4:0xffc778, relay: 0x80fff0 };
+  const colors = { recoil:0xffd36a, gun0:0x91ddff,gun1:0xcbabff,med: 0x72f5ac, ammo: 0x72dfff, cache: 0xffc778, supply:0xffdb82, damage: 0xff7b66, speed: 0xabb2ff, shield: 0x72f5e6, c4:0xffc778, relay: 0x80fff0 };
   // Small billboard sprites cost much less than loading six more 3D models on phones.
-  const art={med:'med',ammo:'ammo',shield:'armor',supply:'supply',cache:'supply',speed:'stim',damage:'stim',c4:'grenades'};
+  const art={recoil:'recoil',med:'med',ammo:'ammo',shield:'armor',supply:'supply',cache:'supply',speed:'stim',damage:'stim',c4:'grenades'};
   const loader=new THREE.TextureLoader(),textures={};
-  if(typeof document.createElementNS==='function')for(const asset of new Set(Object.values(art))){const texture=loader.load(`/assets/pickups/${asset}.webp`);texture.colorSpace=THREE.SRGBColorSpace;textures[asset]=texture;}
-  const items = [], buffs = { damage: 0, speed: 0, shield: 0 };
+  if(typeof document.createElementNS==='function')for(const asset of new Set(Object.values(art))){const texture=loader.load(`/assets/pickups/${asset}.${asset==='recoil'?'svg':'webp'}`);texture.colorSpace=THREE.SRGBColorSpace;textures[asset]=texture;}
+  const items = [], buffs = { recoil:0, damage: 0, speed: 0, shield: 0 };
   let mission = null, held = false, interact = false, nextId=0;
   const ringGeo = new THREE.TorusGeometry(0.8, 0.035, 6, 40);
   const boxGeo = new THREE.BoxGeometry(0.65, 0.65, 0.65);
@@ -32,6 +32,7 @@ export function createOperations(api) {
     if (kind === 'relay') {
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.35, 8, 8, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, depthWrite: false })); beam.position.y = 4; group.add(beam);
     }
+    if(kind!=='relay')group.scale.setScalar(.75);
     group.position.copy(pos); state.world.add(group);
     const item = { id,kind, group, body, pos: pos.clone(), age: 0,pending:0 }; items.push(item); return item;
   }
@@ -43,7 +44,7 @@ export function createOperations(api) {
       const y = state.collMesh ? floorAt(x, z, P.pos.y + 0.6, 2) : 0;
       if (y === null || Math.abs(y - P.pos.y) > 0.6) continue;
       const pos = new THREE.Vector3(x, y, z);
-      if (!clearPath(P.pos, pos) || items.some(item => Math.hypot(item.pos.x-x,item.pos.z-z) < 5.5)) continue;
+      if (!clearPath(P.pos, pos) || items.some(item => Math.hypot(item.pos.x-x,item.pos.z-z) < 9)) continue;
       return pos;
     }
     return null;
@@ -54,8 +55,11 @@ export function createOperations(api) {
     const pos = safeSpot(12, 24) || safeSpot(4, 10) || P.pos.clone();
     mission = { phase: 'recover', progress: 0, sector: n, relay: place('relay', pos), completed: false, sideComplete:false };
     // Recovery near the first fights, ammunition deeper in, and armor before the relay.
-    for (const [kind,min,max] of [['med',5,10],['ammo',8,15],['shield',11,20],['med',12,19],['ammo',15,22],['damage',10,19],['med',17,24],['speed',14,22],['c4',9,18],['cache',15,23],['gun0',7,18],['gun1',12,22]]) {
-      const p = safeSpot(min, max); if (p) place(kind, p);
+    for (const [kind,min,max] of [['recoil',12,24],['med',5,10],['ammo',8,15],['shield',11,20],['med',12,19],['ammo',15,22],['damage',10,19],['med',17,24],['speed',14,22],['c4',9,18],['cache',15,23],['gun0',7,18],['gun1',12,22]]) {
+      // Keep the useful near-route placement, but expand the search when that
+      // ring fills so late supplies and both weapons are never silently lost.
+      const p = safeSpot(min, max) || safeSpot(max + 2, Math.max(max + 18, 42));
+      if (p) place(kind, p);
     }
     const supplySpot=safeSpot(14,28);if(supplySpot)place('supply',supplySpot);else mission.sideComplete=true;
   }
@@ -64,7 +68,7 @@ export function createOperations(api) {
     for(const key in buffs)buffs[key]=0;
     mission={phase:'hunt',sector:0,progress:0,completed:false,relay:null,sideComplete:false};
     const layout=[
-      ['med',25,16],['ammo',-46,35],['damage',64,-47],
+      ['recoil',45,70],['recoil',-48,-48],['med',25,16],['ammo',-46,35],['damage',64,-47],
       ['med',-30,-28],['shield',9,55],['ammo',54,37],
       ['speed',78,-12],['med',29,-76],['cache',-38,-75],
       ['gun1',-86,-27],['ammo',-81,63],['med',-2,105],
@@ -94,7 +98,7 @@ export function createOperations(api) {
     else if (kind === 'cache') {
       kind = ['med', 'ammo', 'damage', 'speed', 'shield', 'credits'][Math.floor(Math.random() * 6)];
       banner('CACHE OPENED · ' + kind.toUpperCase());
-    } else banner(({ gun0:'M4A1 PICKED UP + AMMO',gun1:'LASER MG PICKED UP + AMMO',med: 'MEDKIT +55', ammo: 'AMMUNITION RESTORED', damage: 'OVERDRIVE · 20 SECONDS', shield: 'SHIELD · 20 SECONDS', speed: 'HASTE · 20 SECONDS',c4:'C4 RESTOCKED +2' })[kind]);
+    } else banner(({ recoil:'STABILIZER · FASTER RECOIL RECOVERY · 20 SECONDS',gun0:'M4A1 PICKED UP + AMMO',gun1:'LASER MG PICKED UP + AMMO',med: 'MEDKIT +55', ammo: 'AMMUNITION RESTORED', damage: 'OVERDRIVE · 20 SECONDS', shield: 'SHIELD · 20 SECONDS', speed: 'HASTE · 20 SECONDS',c4:'C4 RESTOCKED +2' })[kind]);
     if(receiver)api.grantPickup?.(receiver,kind);else grant(kind);
     remove(item);
   }
@@ -107,7 +111,7 @@ export function createOperations(api) {
     let prompt = '';
     for (const item of [...items]) {
       item.age += dt;
-      if(!/^gun[01]$/.test(item.kind)){if(!item.body.isSprite)item.body.rotation.y += dt * 0.6;item.body.position.y = 0.9 + Math.sin(item.age * 2) * 0.12;}
+      if(!/^gun[01]$/.test(item.kind)){if(!item.body.isSprite)item.body.rotation.y += dt * 0.6;item.body.position.y = (item.kind==='relay'?.9:.72) + Math.sin(item.age * 2) * (item.kind==='relay'?.1:.04);}
       if (item.kind === 'relay' || item.pos.distanceTo(P.pos) > 2 || !clearPath(P.pos, item.pos)) continue;
       const wants=item.kind==='cache'||/^gun[01]$/.test(item.kind)?interact:item.kind==='med'?P.hp<P.maxHp:item.kind==='ammo'?api.needsAmmo?.()??true:item.kind==='c4'?P.c4<6:true;
       if(item.kind==='cache')prompt=(api.touchDevice?'TAP HOLD E':'[E]')+' OPEN MYSTERY CACHE';
@@ -153,7 +157,7 @@ export function createOperations(api) {
   return {
     start, startHunt, update, buffs, items, get ready() { return !!mission?.completed; },
     input(down) { held = down; if (down) interact = true; },
-    drop(pos) { if (items.length < 24 && Math.random() < .4 && !blocked(pos.x,pos.z,.8) && items.every(item=>Math.hypot(item.pos.x-pos.x,item.pos.z-pos.z)>6)) place(P.hp<P.maxHp*.7 || Math.random()<.65 ? 'med' : 'ammo', pos); },
+    drop(pos) { if (items.length < 24 && Math.random() < .4 && !blocked(pos.x,pos.z,.8) && items.every(item=>Math.hypot(item.pos.x-pos.x,item.pos.z-pos.z)>9)) place(P.hp<P.maxHp*.7 || Math.random()<.65 ? 'med' : 'ammo', pos); },
     grant,
     claim(id,player,pos){const item=items.find(i=>i.id===id);if(item&&item.kind!=='relay'&&item.pos.distanceTo(pos)<2.5)collect(item,player);},
     snapshot(){return mission ? {sector:mission.sector,phase:mission.phase,progress:mission.progress,completed:mission.completed,items:items.map(i=>({id:i.id,kind:i.kind,pos:i.pos.toArray()}))}:null;},

@@ -15,7 +15,7 @@ test('rooms synchronize different heroes, host snapshots, damage actions and dis
     guest.send('join',{code:room.code,name:'Friend',hero:'sentinel'});const joined=await guest.next('joined');assert.equal(joined.role,'guest');
     const roster=await guest.next('roster');assert.deepEqual(roster.players.map(p=>p.hero),['personal','sentinel']);
     host.send('start',{mapKey:'outpost',spawn:[0,0,70],difficulty:'relaxed'});assert.equal((await guest.next('start')).mapKey,'outpost');
-    guest.send('position',{pos:[2,0,70],yaw:1,hp:160,active:true,moving:true,speed:8});const position=await host.next('position');assert.equal(position.position.hp,160);assert.equal(position.position.moving,true);assert.equal(position.position.speed,8);
+    guest.send('position',{pos:[2,0,70],yaw:1,hp:160,active:true,moving:true,speed:8,lateral:true,jumping:true,running:true});const position=await host.next('position');assert.equal(position.position.hp,160);assert.equal(position.position.moving,true);assert.equal(position.position.speed,8);assert.equal(position.position.lateral,true);assert.equal(position.position.jumping,true);assert.equal(position.position.running,true);
     guest.send('position',{pos:[2,0,70],yaw:1,hp:160,active:true,moving:false,speed:0});const stopped=await host.next('position');assert.equal(stopped.position.moving,false);assert.equal(stopped.position.speed,0);
     host.send('snapshot',{snapshot:{monsters:[{id:1,hp:60}],barrels:[],wave:1}});assert.equal((await guest.next('snapshot')).snapshot.monsters[0].hp,60);
     guest.send('action',{action:{kind:'hit',id:1,damage:25,pos:[0,1,40]}});assert.equal((await host.next('action')).action.damage,25);

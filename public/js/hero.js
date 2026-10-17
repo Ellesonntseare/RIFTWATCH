@@ -3,12 +3,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { HEROES,selectedHero } from './roster.js';
 import { buildPersonalHead } from './personal-head.js';
-import {heroMotionClips,createHeroMotion,MOVEMENT_PACK_URL} from './hero-motion.js';
+import {heroMotionClips,createHeroMotion} from './hero-motion.js';
 import {createHeroWeapon} from './hero-weapon.js';
 import {createBlobShadow} from './monsters.js';
 const templates=new Map();let faceTexture;
 export async function loadHero(file='MAIN HERO.glb') {
-  if(!templates.has(file))templates.set(file,new GLTFLoader().loadAsync(file==='mixamo-movement-pack.glb'?MOVEMENT_PACK_URL:'/models/'+file));
+  if(!templates.has(file))templates.set(file,new GLTFLoader().loadAsync('/models/'+file));
   faceTexture ||= new THREE.TextureLoader().loadAsync('/assets/hero-face.png');
   return Promise.all([templates.get(file),faceTexture]);
 }
@@ -38,13 +38,12 @@ export async function buildHero(skin=selectedSkin(),options={}) {
   }
   if(options.preview){
     let motion=null,requested;
-    const ensureMotion=()=>requested ||= heroMotionClips(config.file,gltf.scene,null,null,true).then(clips=>motion=createHeroMotion(model,root,clips));
-    if(config.id==='stunt')ensureMotion().catch(e=>console.warn('Preview animation',e));
+    const ensureMotion=()=>requested ||= heroMotionClips(config.file,gltf.scene).then(clips=>motion=createHeroMotion(model,root,clips));
     return {root,playMove:async name=>{await ensureMotion();return motion.play(name);},update(dt,moving=false,speed=0){
       if(moving&&!requested)ensureMotion().catch(e=>console.warn('Preview animation',e));
       if(motion)motion(dt,moving,speed);
     }};
   }
-  const clips=await heroMotionClips(config.file,gltf.scene),motion=createHeroMotion(model,root,clips),weapon=await createHeroWeapon(root,model);root.add(createBlobShadow(.6));
-  return {root,playMove:(name,duration)=>motion.play(name,duration),update(dt,moving=false,speed=0,weaponIndex=0,pitch=0,motionState={}){motion(dt,moving,speed,motionState);weapon.update(dt,weaponIndex,pitch);},muzzle:()=>weapon.muzzle(),flash:()=>weapon.flash(),skin};
+  const clips=await heroMotionClips(config.file,gltf.scene),motion=createHeroMotion(model,root,clips),weapon=await createHeroWeapon(root,model);const blob=createBlobShadow(.6);root.add(blob);
+  return {root,playMove:(name,duration)=>motion.play(name,duration),update(dt,moving=false,speed=0,weaponIndex=0,pitch=0,motionState={}){motion(dt,moving,speed,motionState);weapon.update(dt,weaponIndex,pitch,motion.handsBusy||motionState.dead||motionState.unarmed);blob.visible=!motionState.dead;},muzzle:()=>weapon.muzzle(),flash:()=>weapon.flash(),skin};
 }

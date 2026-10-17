@@ -56,10 +56,20 @@ npm test
 Source: public/js/. Server: server.js and multiplayer-server.cjs.
 Progress and deferred work: PROGRESS.md. Character assets: CHARACTER-NOTES.md.
 
-MOVEMENT PREVIEWS
-Open OPERATORS in the main menu, select any operator, choose a movement, and tap PLAY MOVEMENT.
-The STUNT OPERATIVE is the untextured mannequin supplied with the Mixamo animations.
-Jump, rifle fire, C4 throws, and five cycling melee moves use the supplied animations in third-person play.
-Melee hits one nearby target after a short windup; swimming remains a visual preview.
+MOVEMENT ANIMATIONS
+Choose an operator and play normally; the existing game models use the movement pack automatically.
+In third-person, jumping, walking, running, moving sideways, rifle fire, C4 throws, and five cycling melee moves trigger matching animations. The normal soldier jump and rifle poses replace exaggerated showcase moves; walking and running keep the lower body moving during rifle fire and throws.
+Melee hits one nearby target after a short windup. The pack's swimming and showcase moves are not used in combat.
 To rebuild or expand the pack from compatible FBX files, use Blender with
 scripts/import-movement-pack.py; run it with -- OUTPUT.glb FIRST_SKIN.fbx OTHER_MOVE.fbx ...
+
+Locomotion update (2026-10-17): Shift (either key) or the mobile Run control plus forward movement selects the run animation. Sprint state is relayed to peers. Winter Soldier uses forward-plane thigh/knee/ankle cycles; Fire Demon and Minotaur receive a lightweight lower-body skeleton while loading, preserving their existing meshes. Distant enemy silhouettes also step. Biped regressions check both feet travel and both knees bend on the actual delivery models. No animation selection menu was added.
+
+COMBAT UPDATE (2026-10-17)
+1 / 2 selects a gun; 3 selects fists; X punches. Phone users can tap the weapon slots.
+Hold Shift to run; Caps Lock toggles run lock. Phone Run and Run Lock are separate controls.
+B / phone ICE deploys a rising frost barrier in solo/co-op: 18-second lifetime, 25-second cooldown. Requires clear level ground. Not enabled in 1v1.
+Pause settings: optional after-kill aim assist (solo/co-op, visible enemies within a small forward cone; manual looking cancels it).
+Recoil stabilizer pickups last 20 seconds. Reloads: rifle 1.3s, laser 1.6s before upgrades/operator modifiers.
+Directional hit arcs show the incoming attack side. Enemy corpses persist until the map resets.
+Native Android orientation now uses sensorLandscape. Build and install a new APK for this native change; physical-phone performance/build was not verified locally.

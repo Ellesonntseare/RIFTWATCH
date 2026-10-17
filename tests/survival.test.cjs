@@ -1,10 +1,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const main=fs.readFileSync('public/js/main.js','utf8');
-const source=main.slice(main.indexOf('function hurtPlayer(a) {'),main.indexOf('function die()'));
+const source=main.slice(main.indexOf('function hurtPlayer(a,source) {'),main.indexOf('function die()'));
 function survival(){
   const P={hp:110,spawnShield:0,damageGrace:0},state={difficulty:'relaxed',hurt:0,shake:0},operations={buffs:{shield:0}};
   let deaths=0;
-  const hurt=new Function('P','state','operations','sfx','die',source+'return hurtPlayer;')(P,state,operations,{hurt(){}},()=>deaths++);
+  const hurt=new Function('P','state','operations','sfx','die','function showDamageDirection(){};'+source+'return hurtPlayer;')(P,state,operations,{hurt(){}},()=>deaths++);
   return {P,state,operations,hurt,get deaths(){return deaths;}};
 }
 test('deployment shield prevents damage while the player gets oriented',()=>{

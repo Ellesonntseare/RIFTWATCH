@@ -31,7 +31,7 @@ export async function createHeroWeapon(root,model){
   let selected=0,flashTime=0;
   const position=new THREE.Vector3();
   return {
-    update(dt,weapon=0,pitch=0){selected=weapon===1?1:0;mount.children.slice(0,2).forEach((g,i)=>g.visible=i===selected);mount.position.set(-.15,1.31+model.position.y-baseY,.32);mount.rotation.x=-pitch;root.updateMatrixWorld(true);const right=grips[selected].right.clone().applyQuaternion(mount.quaternion).add(mount.position),left=grips[selected].left.clone().applyQuaternion(mount.quaternion).add(mount.position);grip(right,left,pitch);flashTime=Math.max(0,flashTime-dt);flash.position.copy(muzzles[selected]);light.position.copy(flash.position);flash.visible=flashTime>0;light.intensity=flash.visible?1.5:0;root.updateMatrixWorld(true);},
+    update(dt,weapon=0,pitch=0,handsBusy=false){mount.visible=!handsBusy;if(handsBusy){flashTime=0;flash.visible=false;light.intensity=0;return;}selected=weapon===1?1:0;mount.children.slice(0,2).forEach((g,i)=>g.visible=i===selected);mount.position.set(-.15,1.31+model.position.y-baseY,.32);mount.rotation.x=-pitch;root.updateMatrixWorld(true);const right=grips[selected].right.clone().applyQuaternion(mount.quaternion).add(mount.position),left=grips[selected].left.clone().applyQuaternion(mount.quaternion).add(mount.position);grip(right,left,pitch);flashTime=Math.max(0,flashTime-dt);flash.position.copy(muzzles[selected]);light.position.copy(flash.position);flash.visible=flashTime>0;light.intensity=flash.visible?1.5:0;root.updateMatrixWorld(true);},
     muzzle(){return mount.localToWorld(muzzles[selected].clone());},
     flash(){flashTime=.055;}
   };

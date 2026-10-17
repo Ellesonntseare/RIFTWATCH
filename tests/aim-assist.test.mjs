@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {chooseAssistTarget} from '../public/js/aim-assist.js';
+test('assist selects only living visible targets in the forward cone',()=>{const p={x:0,y:1,z:0},front={x:1,y:1,z:-10};assert(chooseAssistTarget(p,0,0,[front],()=>true));assert.equal(chooseAssistTarget(p,0,0,[front],()=>false),null);assert.equal(chooseAssistTarget(p,0,0,[{...front,dead:true}],()=>true),null);assert.equal(chooseAssistTarget(p,0,0,[{x:5,y:1,z:1}],()=>true),null);});

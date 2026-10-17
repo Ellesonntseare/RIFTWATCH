@@ -1,5 +1,21 @@
 let ac = null, master = null, muted = false, ambience = null;
 let music=null,musicVolume=.09,ducked=false;
+const samples=new Map(),voices=[];
+// Decode once, then reuse short recordings. Cap overlapping tails on phones.
+async function loadSamples(){
+  await Promise.all(['rifle-1','rifle-2','rifle-3','punch-1','punch-2','punch-3'].map(async name=>{
+    try{const response=await fetch('/assets/audio/'+name+(name.startsWith('rifle')?'.wav':'.ogg'));if(!response.ok)return;samples.set(name,await ac.decodeAudioData(await response.arrayBuffer()));}
+    catch(error){console.warn('Sound sample unavailable:',name);}
+  }));
+}
+function sample(prefix,volume=1){
+  if(!ac)return false;
+  const buffer=samples.get(prefix+'-'+(1+Math.floor(Math.random()*3)));if(!buffer)return false;
+  while(voices.length>=12){const old=voices.shift();old.stop();}
+  const source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;source.playbackRate.value=.97+Math.random()*.06;
+  gain.gain.value=volume;source.connect(gain);gain.connect(master);voices.push(source);
+  source.onended=()=>{const index=voices.indexOf(source);if(index>=0)voices.splice(index,1);source.disconnect();gain.disconnect();};source.start();return true;
+}
 export function setMusicVolume(value){musicVolume=Math.max(0,Math.min(.3,value));if(music)music.volume=musicVolume*(ducked?.35:1);}
 export function duckMusic(speaking){ducked=!!speaking;setMusicVolume(musicVolume);}
 export function toggleAudio() { muted = !muted; if (master) master.gain.setTargetAtTime(muted ? 0 : 0.35, ac.currentTime, 0.1);if(music)music.muted=muted; return muted; }
@@ -9,6 +25,7 @@ export function initAudio() {
   if (ac) { ac.resume();music?.play().catch(()=>{}); return; }
   ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.35;
   const limiter = ac.createDynamicsCompressor(); limiter.threshold.value = -12; limiter.ratio.value = 8; master.connect(limiter); limiter.connect(ac.destination);
+  void loadSamples();
   ambience = ac.createGain(); ambience.gain.value = 0; ambience.connect(master);
   for (const frequency of [55, 82.41, 110.18]) { const osc = ac.createOscillator(); osc.type = 'sine'; osc.frequency.value = frequency; osc.connect(ambience); osc.start(); }
   music=new Audio('/assets/audio/dark-alleys.ogg');music.loop=true;music.volume=musicVolume;music.muted=muted;music.play().catch(()=>{});
@@ -25,7 +42,9 @@ function tone(f0, f1, dur, vol, type = 'sine', delay = 0) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur);
 }
 export const sfx = {
-  shot: (v = 1) => { noise(0.035, 0.8 * v, 5500, 'highpass'); noise(0.18, 0.5 * v, 1700); tone(130, 38, 0.14, 0.6 * v, 'triangle'); tone(900, 180, 0.025, 0.12 * v, 'square'); },
+  shot: (v = 1) => { if(sample('rifle',v))return;noise(0.035, 0.8 * v, 5500, 'highpass'); noise(0.18, 0.5 * v, 1700); tone(130, 38, 0.14, 0.6 * v, 'triangle'); tone(900, 180, 0.025, 0.12 * v, 'square'); },
+  punchSwing:()=>noise(.12,.22,1400,'bandpass'),
+  punchHit:()=>{if(!sample('punch',.9)){noise(.09,.5,750);tone(100,45,.12,.35);}},
   step: () => { noise(0.075, 0.13, 700); tone(90, 50, 0.06, 0.06); },
   laser: (v = 1) => { tone(1500, 300, 0.12, 0.25 * v, 'sawtooth'); noise(0.05, 0.2 * v, 6000, 'highpass'); },
   hit: () => tone(300, 120, 0.06, 0.25, 'square'),

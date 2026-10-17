@@ -49,3 +49,26 @@ export function renderRadar(canvas,{player,map,background,backgroundScale,monste
   c.restore();
   return {contacts,distance:relay?Math.round(Math.hypot(relay.pos.x-player.pos.x,relay.pos.z-player.pos.z)):null};
 }
+
+export function renderFullMap(canvas,{player,map,background,monsters,items,peers=[],selfId}){
+  const c=canvas.getContext('2d'),width=canvas.width,height=canvas.height;
+  c.clearRect(0,0,width,height);c.fillStyle='#0b2730';c.fillRect(0,0,width,height);
+  const worldWidth=Math.max(1,map.size[0]),worldDepth=Math.max(1,map.size[1]);
+  const scale=Math.min((width-64)/worldWidth,(height-64)/worldDepth),drawWidth=worldWidth*scale,drawDepth=worldDepth*scale;
+  const left=(width-drawWidth)/2,top=(height-drawDepth)/2;
+  const point=(x,z)=>[left+(x+worldWidth/2)*scale,top+(z+worldDepth/2)*scale];
+  c.fillStyle='#193b40';c.fillRect(left,top,drawWidth,drawDepth);
+  if(background)c.drawImage(background,left,top,drawWidth,drawDepth);
+  c.save();c.beginPath();c.rect(left,top,drawWidth,drawDepth);c.clip();
+  c.strokeStyle='#b2e4d41d';c.lineWidth=1;
+  const grid=worldWidth>400?100:worldWidth>160?50:20;
+  for(let x=-worldWidth/2;x<=worldWidth/2;x+=grid){const px=point(x,0)[0];c.beginPath();c.moveTo(px,top);c.lineTo(px,top+drawDepth);c.stroke();}
+  for(let z=-worldDepth/2;z<=worldDepth/2;z+=grid){const py=point(0,z)[1];c.beginPath();c.moveTo(left,py);c.lineTo(left+drawWidth,py);c.stroke();}
+  const dot=(x,z,color,r=6)=>{const [px,py]=point(x,z);c.beginPath();c.arc(px,py,r,0,Math.PI*2);c.fillStyle=color;c.fill();c.lineWidth=2;c.strokeStyle='#082027';c.stroke();};
+  for(const item of items){if(item.kind==='relay')dot(item.pos.x,item.pos.z,'#9dffe1',9);else dot(item.pos.x,item.pos.z,item.kind==='med'?'#81f3a9':'#eac781',5);}
+  for(const monster of monsters)if(!monster.dead)dot(monster.x,monster.z,monster.T.boss?'#ffb15d':'#fa7380',monster.T.boss?10:5);
+  for(const peer of peers){const p=peer.position;if(peer.id!==selfId&&p?.active&&p.hp>0)dot(p.pos[0],p.pos[2],'#79cfff',7);}
+  const [px,py]=point(player.pos.x,player.pos.z);c.save();c.translate(px,py);c.rotate(-player.yaw);c.fillStyle='#fff';c.strokeStyle='#07323a';c.lineWidth=3;c.beginPath();c.moveTo(0,-14);c.lineTo(10,10);c.lineTo(0,5);c.lineTo(-10,10);c.closePath();c.fill();c.stroke();c.restore();
+  c.restore();c.strokeStyle='#91d9c1';c.lineWidth=3;c.strokeRect(left,top,drawWidth,drawDepth);
+  c.fillStyle='#a4ffe1';c.font='bold 16px Consolas,monospace';c.fillText('N ↑',left+12,top+24);
+}

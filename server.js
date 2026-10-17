@@ -2,7 +2,7 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const {attachMultiplayer}=require('./multiplayer-server.cjs');
 const root = path.join(__dirname, 'public');
 const routes = { '/models/': path.join(__dirname, 'models'), '/vendor/': path.join(__dirname, 'vendor') };
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.glb': 'model/gltf-binary', '.svg': 'image/svg+xml', '.json':'application/json', '.png':'image/png', '.ogg':'audio/ogg' };
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.glb': 'model/gltf-binary', '.svg': 'image/svg+xml', '.json':'application/json', '.png':'image/png', '.ogg':'audio/ogg', '.wav':'audio/wav' };
 const server = http.createServer((req, res) => {
   let url;
   try { url = decodeURIComponent(req.url.split('?')[0]); } catch { res.writeHead(400); return res.end('Invalid URL'); }

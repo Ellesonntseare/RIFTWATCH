@@ -2,7 +2,7 @@ const {WebSocketServer,WebSocket}=require('ws');
 const {shotHit,TARGET_KILLS,RESPAWN_MS}=require('./duel-rules.cjs');
 const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi','island','oldquarter']);
 const ROOM_CODE=/^[A-Z0-9]{4,16}$/;
-const HEROES=new Set(['personal','tactical','vanguard','sentinel','stunt']);
+const HEROES=new Set(['personal','tactical','vanguard','sentinel']);
 const ATTACKS=new Set(['punch','elbow','kneeCombo','dropKick','daggers','fireRifle','throw']);
 const vector=p=>Array.isArray(p)&&p.length===3&&p.every(n=>Number.isFinite(n)&&Math.abs(n)<12000);
 
@@ -100,7 +100,7 @@ function attachMultiplayer(server){
       }
       if(m.type==='position'&&vector(m.pos)&&Number.isFinite(m.yaw)&&Number.isFinite(m.hp)){
         const duelPlayer=room.duel?.players.get(peer.id);
-        peer.position={pos:m.pos,yaw:m.yaw,pitch:Number.isFinite(m.pitch)?Math.max(-1.5,Math.min(1.5,m.pitch)):0,weapon:m.weapon===1?1:0,aiming:!!m.aiming,hp:duelPlayer?duelPlayer.hp:Math.max(0,Math.min(500,m.hp)),active:!!m.active,moving:!!m.moving,speed:Number.isFinite(m.speed)?Math.max(0,Math.min(20,m.speed)):0,airborne:!!m.airborne,attack:ATTACKS.has(m.attack)?m.attack:'',attackSeq:Number.isSafeInteger(m.attackSeq)&&m.attackSeq>=0?m.attackSeq:0};
+        peer.position={pos:m.pos,yaw:m.yaw,pitch:Number.isFinite(m.pitch)?Math.max(-1.5,Math.min(1.5,m.pitch)):0,weapon:m.weapon===1?1:0,aiming:!!m.aiming,unarmed:!!m.unarmed,hp:duelPlayer?duelPlayer.hp:Math.max(0,Math.min(500,m.hp)),active:!!m.active,moving:!!m.moving,speed:Number.isFinite(m.speed)?Math.max(0,Math.min(20,m.speed)):0,airborne:!!m.airborne,jumping:!!m.jumping,running:!!m.running,lateral:!!m.lateral,attack:ATTACKS.has(m.attack)?m.attack:'',attackSeq:Number.isSafeInteger(m.attackSeq)&&m.attackSeq>=0?m.attackSeq:0};
         broadcast(room,'position',{id:peer.id,position:peer.position},peer.id);return;
       }
       if(m.type==='duel-melee'&&room.duel&&!room.duel.winner){
@@ -133,7 +133,7 @@ function attachMultiplayer(server){
       }
       if(m.type==='action'&&peer.id!==room.host&&m.action&&typeof m.action==='object'){
         const a=m.action;
-        if(!['hit','barrel','interact','pickup','explosion','shot','respawn','melee'].includes(a.kind))return;
+        if(!['hit','barrel','interact','pickup','explosion','shot','respawn','melee','ice'].includes(a.kind))return;
         if(a.damage!==undefined&&(!Number.isFinite(a.damage)||a.damage<0||a.damage>600))return;
         if(a.pos!==undefined&&!vector(a.pos))return;
         send(room.peers.get(room.host).ws,'action',{id:peer.id,action:a});return;

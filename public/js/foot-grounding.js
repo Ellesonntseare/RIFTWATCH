@@ -9,7 +9,7 @@ export function createFootGrounding(model,root){
     if(!mesh.isSkinnedMesh||!mesh.visible)return;
     const {position,skinIndex,skinWeight}=mesh.geometry.attributes;
     if(!position||!skinIndex||!skinWeight)return;
-    const feet=new Map(mesh.skeleton.bones.map((bone,i)=>[i,/left.*(foot|toe)/i.test(bone.name)?'left':/right.*(foot|toe)/i.test(bone.name)?'right':null]));
+    const feet=new Map(mesh.skeleton.bones.map((bone,i)=>[i,/left.*(foot|toe)|^(foot|toe)_l(?:_|$)/i.test(bone.name)?'left':/right.*(foot|toe)|^(foot|toe)_r(?:_|$)/i.test(bone.name)?'right':null]));
     for(let i=0;i<position.count;i++){
       let side=null,weight=0;
       for(let j=0;j<4;j++){const candidate=feet.get(skinIndex.getComponent(i,j)),w=skinWeight.getComponent(i,j);if(candidate&&w>weight){side=candidate;weight=w;}}

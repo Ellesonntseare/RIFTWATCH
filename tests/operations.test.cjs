@@ -27,9 +27,10 @@ test('medkits clamp health and timed effects expire only during updates',()=>{
   P.pos.copy(ops.items.find(i=>i.kind==='damage').pos);ops.update(0.1);assert.equal(ops.buffs.damage,20);
   ops.update(21);assert.equal(ops.buffs.damage,0);
 });
-test('health pickups float and restore 55 health',()=>{
+test('health pickups hover subtly at reduced size and restore 55 health',()=>{
   const {ops,P}=setup(),meds=ops.items.filter(i=>i.kind==='med');assert.equal(meds.length,3);
-  const med=meds[0];ops.update(1);assert(med.body.position.y>.75);
+  const med=meds[0];ops.update(1);assert(med.body.position.y>=.68&&med.body.position.y<=.76);assert.equal(med.group.scale.x,.75);
+  for(const item of ops.items)if(item!==med)assert(Math.hypot(item.pos.x-med.pos.x,item.pos.z-med.pos.z)>=9);
   P.hp=20;P.pos.copy(med.pos);ops.update(.1);assert.equal(P.hp,75);assert(!ops.items.includes(med));
 });
 test('mystery cache requires interaction and can only be opened once',()=>{
@@ -44,10 +45,11 @@ test('blocked terrain falls back to current reachable position without inaccessi
   const ops=create({...ctx.api,clearPath:()=>false});ops.start(1);
   assert.equal(ops.items.length,1);assert(ops.items[0].pos.equals(ctx.P.pos));
 });
-test('unanimated defender types have no translation speed',async()=>{
+test('the winter soldier and heavy monsters advance while bosses defend their positions',async()=>{
   const text=fs.readFileSync('public/js/monsters.js','utf8');
   const types=new Function(text.slice(text.indexOf('export const MONSTER_TYPES'),text.indexOf('const FILES')).replace('export const','const')+'return MONSTER_TYPES;')();
-  for(const key of ['sniper','demon','brute','boss']) {assert.equal(types[key].stationary,true,key);assert.equal(types[key].speed,0,key);}
+  for(const key of ['boss']) {assert.equal(types[key].stationary,true,key);assert.equal(types[key].speed,0,key);}
+  for(const key of ['sniper','demon','brute']) {assert.equal(!!types[key].stationary,false,key);assert(types[key].speed>0,key);}
   assert(types.grunt.speed>0);assert(types.runner.speed>0);
 });
 
@@ -59,4 +61,11 @@ test('ground guns require E, equip the selected gun and are consumed only once',
 
 test('a multiplayer weapon claim removes the shared gun and grants it to its receiver',()=>{
   const {ops,api}=setup(),grants=[];api.grantPickup=(id,kind)=>grants.push({id,kind});const item=ops.items.find(i=>i.kind==='gun1');ops.claim(item.id,'friend',item.pos);ops.claim(item.id,'friend',item.pos);assert.deepEqual(grants,[{id:'friend',kind:'gun1'}]);
+});
+
+test('recoil stabilizer is collectible, lasts 20 seconds, and resets for a new sector',()=>{
+ const {ops,P}=setup();const item=ops.items.find(i=>i.kind==='recoil');assert(item);
+ P.pos.copy(item.pos);ops.update(.1);assert.equal(ops.buffs.recoil,20);assert(!ops.items.includes(item));
+ ops.update(5);assert.equal(ops.buffs.recoil,15);ops.update(16);assert.equal(ops.buffs.recoil,0);
+ ops.grant('recoil');ops.start(2);assert.equal(ops.buffs.recoil,0);
 });

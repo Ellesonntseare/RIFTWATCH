@@ -8,9 +8,17 @@ canvas { display: block; position: fixed; inset: 0; }
 #score { color: #ffd34d; }
 #left { color: #ff6b5a; }
 
-#cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
-#cross.aiming {width:16px;height:16px;margin:-8px;border:1px solid #a4ffe1;background:transparent;box-shadow:0 0 0 1px #0008}
-#cross.aiming::after {content:'';position:absolute;width:3px;height:3px;border-radius:50%;background:white;top:5px;left:5px}
+#cross{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px;border:1.5px solid #e9fff4;border-radius:50%;background:transparent;box-sizing:border-box;box-shadow:0 0 2px #0008;pointer-events:none;transition:width .22s cubic-bezier(.16,1,.3,1),height .22s cubic-bezier(.16,1,.3,1),margin .22s cubic-bezier(.16,1,.3,1),border-color .14s,box-shadow .14s,transform .08s}
+#cross::before{content:'';position:absolute;inset:-7px;border:1px solid #c6ffea55;border-radius:50%;border-left-color:transparent;border-right-color:transparent;transition:transform .28s,border-color .15s}
+#cross::after{content:'';position:absolute;inset:-11px;background:linear-gradient(#c6ffea99,#c6ffea99) top center/1px 4px no-repeat,linear-gradient(#c6ffea99,#c6ffea99) bottom center/1px 4px no-repeat,linear-gradient(#c6ffea99,#c6ffea99) left center/4px 1px no-repeat,linear-gradient(#c6ffea99,#c6ffea99) right center/4px 1px no-repeat;transition:opacity .2s}
+#cross.aiming{width:24px;height:24px;margin:-12px}
+#cross.enemy-target{width:14px;height:14px;margin:-7px;border-color:#ff655b;box-shadow:0 0 7px #ff49333d}
+#cross.enemy-target::before{transform:rotate(90deg);border-top-color:#ff655b99;border-bottom-color:#ff655b99}
+#cross.enemy-target::after{opacity:.45}
+#cross.firing{transform:scale(1.22)}
+@media(prefers-reduced-motion:reduce){#cross,#cross::before,#cross::after{transition:none}#cross.firing{transform:none}}
+.touch-run-lock{left:160px;bottom:84px;font-size:9px}.touch-run-lock.locked{border-color:#a4ffe1;background:#386d52dd}
+
 #scope-overlay{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle 24vmin at center,transparent 0 92%,rgba(2,7,9,.92) 99%,#020709 100%)}
 #scope-overlay::after{content:'';position:absolute;left:50%;top:50%;width:48vmin;height:48vmin;transform:translate(-50%,-50%);border:2px solid #a8dac999;border-radius:50%;box-shadow:inset 0 0 18px #05150e9c,0 0 18px #0008}
 #hit { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; border: 2px solid #fff; transform: rotate(45deg); transition: opacity .05s; }
@@ -162,12 +170,16 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 
 /* Circular, heading-up tactical radar. */
 #radar{position:absolute;top:26px;right:26px;width:224px;color:#a8c3cb;pointer-events:none;filter:drop-shadow(0 5px 15px #0007)}
+#radar-expand{display:block;width:100%;padding:0;border:0;background:none;color:#a4ffe1;pointer-events:auto;cursor:pointer;line-height:1}#radar-expand:hover{background:none;border:0;transform:none;filter:brightness(1.2)}#radar-expand span{display:block;margin-top:3px;font:8px Consolas,monospace;letter-spacing:1px;text-align:right}
 #mini{position:static;inset:auto;display:block;width:224px;height:224px;background:transparent;border:0;border-radius:50%;opacity:1}
+#expanded-map{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:8px;box-sizing:border-box;background:#021016ec;pointer-events:auto}#expanded-map.hidden{display:none}.expanded-map-panel{width:min(92vw,760px,calc(96dvh - 92px));max-height:96dvh;display:flex;flex-direction:column;gap:8px;padding:12px;box-sizing:border-box;background:#0a222b;border:1px solid #80c9bc;box-shadow:0 20px 80px #000b}.expanded-map-header{display:flex;align-items:center;gap:12px;color:#a4ffe1;font:12px Consolas,monospace;letter-spacing:1px}.expanded-map-header span{flex:1;color:#bbd5d0}.expanded-map-header button{padding:7px 12px;font-size:11px}#full-map{position:static;inset:auto;display:block;min-height:0;max-height:calc(96dvh - 104px);width:100%;aspect-ratio:1;object-fit:contain;background:#0d2830;border:1px solid #476d6e}.expanded-map-panel small{color:#b0cbc9;font:9px Consolas,monospace;letter-spacing:.5px}
+#weapon-picture{width:136px;height:51px;margin-bottom:3px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #a4ffe14a}#weapon-picture svg{width:100%;height:100%;fill:#a4ffe1;stroke:#d7fff2;stroke-width:1.3;filter:drop-shadow(0 2px 5px #a4ffe16a)}#ammobox[data-weapon="0"] .weapon-laser,#ammobox[data-weapon="1"] .weapon-m4{display:none}
 .radar-title,.radar-meta{display:flex;justify-content:space-between;align-items:center;font:9px Consolas,monospace;letter-spacing:1px}
 .radar-title{margin:0 6px 7px;color:#b5d0d7}.radar-title>span:first-child{color:#a4ffe1}.radar-title i{display:inline-block;width:5px;height:5px;background:#a4ffe1;border-radius:50%;box-shadow:0 0 7px #a4ffe188;margin-right:5px}
 #radar-contacts{font-size:8px;color:#8daab4}.radar-meta{margin:8px 4px 0;font-size:8px;letter-spacing:.5px}.radar-meta b{color:#49636e;margin:0 3px}#radar-objective{color:#a4ffe1}
 .radar-legend{display:flex;justify-content:center;gap:12px;margin-top:11px;padding-top:9px;border-top:1px solid #7eacb225;font:7px Consolas,monospace;letter-spacing:.6px}.radar-enemy{color:#ff8790}.radar-squad{color:#83cfff}.radar-relay{color:#a4ffe1}
 @media(max-width:800px){#radar{top:60px;right:12px;width:164px}#mini{width:164px;height:164px}.radar-title{letter-spacing:0;font-size:8px}.radar-meta{font-size:7px}.radar-legend{gap:7px;font-size:6px}}
+@media(pointer:coarse){#radar-expand span{font-size:7px}#weapon-picture{width:82px;height:30px}.expanded-map-panel{width:min(96vw,650px);padding:7px;gap:4px}.expanded-map-panel small{font-size:7px}}
 
 .back-characters{display:inline-block;color:#a4ffe1;font:10px Consolas,monospace;letter-spacing:1px;text-decoration:none;padding:8px 0;margin-bottom:10px}.back-characters:hover{color:white}#back-maps{margin-top:10px;background:#142a2b;border:1px solid #527279;color:#c4ddd7;font-size:11px;padding:12px 20px}
 
@@ -349,3 +361,23 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 .map-outpost .map-art,.map-art.map-outpost{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#55636f 0 30px,transparent 30px 44px) 0 100%/100% 36% no-repeat,repeating-linear-gradient(90deg,#3f4c57 0 18px,transparent 18px 52px) 14px 100%/100% 52% no-repeat,linear-gradient(180deg,#9db0c4,#c5d2dd 80%)}
 .map-yard .map-art,.map-art.map-yard{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),repeating-linear-gradient(90deg,#a4552f 0 24px,transparent 24px 28px,#2f6b8a 28px 52px,transparent 52px 56px) 0 100%/100% 34% no-repeat,repeating-linear-gradient(90deg,#2f6b8a 0 24px,transparent 24px 28px,#a4552f 28px 52px,transparent 52px 56px) 14px 78%/100% 26% no-repeat,linear-gradient(180deg,#1c2430,#2c3a4a 80%)}
 .map-crypt .map-art,.map-art.map-crypt{background:linear-gradient(0deg,#10262cf2 4%,transparent 70%),radial-gradient(ellipse at 50% 112%,#6a1d16 0,transparent 60%),repeating-linear-gradient(90deg,#241211 0 16px,transparent 16px 58px) 0 100%/100% 85% no-repeat,#120808}
+#landscape-required{display:none;position:fixed;inset:0;z-index:10000;background:#07191f;color:#d6fff2;align-items:center;justify-content:center;flex-direction:column;gap:18px;text-align:center;padding:28px;box-sizing:border-box;font-family:system-ui,sans-serif}#landscape-required strong{font-size:24px}#landscape-required span{max-width:320px;line-height:1.6}
+@media(orientation:portrait){body.phone-device #landscape-required{display:flex}}
+
+/* A short red arc only on the side of the incoming hit. */
+#damage-directions{position:fixed;inset:0;pointer-events:none;z-index:35;overflow:hidden}
+.damage-direction{position:absolute;left:50%;top:50%;width:min(66vw,66vh);aspect-ratio:1;border:7px solid transparent;border-top-color:#ff493e;border-radius:50%;box-sizing:border-box;transform:translate(-50%,-50%) rotate(var(--bearing));filter:drop-shadow(0 0 7px #ff251d);animation:damage-bearing .85s ease-out forwards}
+@keyframes damage-bearing{0%,18%{opacity:.95}100%{opacity:0}}
+
+#weapon-slots{display:flex;gap:5px;pointer-events:auto;margin:4px 0}
+#weapon-slots button{position:relative;width:64px;height:37px;padding:4px;border:1px solid #769d9b66;background:#08191c99;color:#c0d0ce;border-radius:4px;touch-action:manipulation}
+#weapon-slots button.selected{color:#b1ffe5;border-color:#b1ffe5;background:#295b50aa}
+#weapon-slots svg{width:100%;height:100%;fill:currentColor;stroke:currentColor}
+#weapon-slots small{position:absolute;right:3px;bottom:1px;font-size:9px}
+#weapon-slots button:last-child{width:40px}
+#ammobox.unarmed #weapon-picture{display:none}
+@media(max-height:500px){#weapon-slots button{width:49px;height:29px}#weapon-slots button:last-child{width:33px}}
+
+#mobile-controls>#weapon-slots{position:absolute;top:max(70px,env(safe-area-inset-top));left:max(155px,env(safe-area-inset-left));z-index:3}
+
+.touch-ice{right:240px;bottom:100px}
