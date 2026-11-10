@@ -69,3 +69,11 @@ test('recoil stabilizer is collectible, lasts 20 seconds, and resets for a new s
  ops.update(5);assert.equal(ops.buffs.recoil,15);ops.update(16);assert.equal(ops.buffs.recoil,0);
  ops.grant('recoil');ops.start(2);assert.equal(ops.buffs.recoil,0);
 });
+
+test('supply caches stay grounded and their locator beam fades outside proximity',()=>{
+  const {ops,P}=setup();const cache=ops.items.find(i=>i.kind==='cache');
+  assert(cache);const beam=cache.group.getObjectByName('supply-beacon');assert(beam);
+  P.pos.copy(cache.pos).add(new THREE.Vector3(10,0,0));ops.update(.1);
+  assert.equal(beam.visible,true);assert.equal(cache.body.position.y,.52);assert.equal(cache.body.rotation.y,0);
+  P.pos.copy(cache.pos).add(new THREE.Vector3(100,0,0));ops.update(.1);assert.equal(beam.visible,false);
+});

@@ -42,7 +42,7 @@ export async function dressMap(state, floorAt, buildCollision) {
     await Promise.all([
       [-85,-60], [80,-70], [-10,95], [84,65], [-100,18], [34,90],
     ].map(([x,z],i)=>add('blendswap_lowpoly_tree.glb',6.2,x,z,i*1.7,false)));
-  }else if(state.mapKey==='outpost') {
+  }else if((state.mapKey==='outpost'||state.mapKey==='royale')) {
     await Promise.all([
       add('office_is_old_abandoned_free.glb',3.65,-17,48,Math.PI/2),
       add('office_is_old_abandoned_free.glb',3.65,18,52,-Math.PI/2),
@@ -70,6 +70,19 @@ export async function dressMap(state, floorAt, buildCollision) {
     }
     const files=[['new_york_hot_dog_cart.glb',2.03],['old_gun_cabinet_with_animations.glb',1.95],['old_gun_cabinet_with_animations.glb',1.95]];
     await Promise.all(spots.map(([x,z],i)=>add(...files[i],x,z,Math.atan2(sx-x,sz-z))));
+  }
+  if(state.map.cars){
+    const tire=new THREE.MeshStandardMaterial({color:0x161b20,roughness:.95}),glass=new THREE.MeshStandardMaterial({color:0x233841,metalness:.35,roughness:.3});
+    const wheelGeo=new THREE.CylinderGeometry(.34,.34,.23,10);wheelGeo.rotateZ(Math.PI/2);
+    for(const [i,spot] of state.map.cars.entries()){
+      const car=new THREE.Group(),paint=new THREE.MeshStandardMaterial({color:[0x5f6964,0x3b515d,0x8c5e42][i%3],metalness:.35,roughness:.5});
+      const box=(w,h,d,x,y,z,material)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);mesh.position.set(x,y,z);car.add(mesh);};
+      box(1.85,.55,4.3,0,.65,0,paint);box(1.65,.65,2.1,0,1.22,-.1,glass);box(1.72,.08,2.15,0,1.58,-.1,paint);
+      for(const x of [-.91,.91])for(const z of [-1.3,1.3]){const wheel=new THREE.Mesh(wheelGeo,tire);wheel.position.set(x,.36,z);car.add(wheel);}
+      for(const x of [-.62,.62]){box(.38,.18,.05,x,.8,2.17,new THREE.MeshBasicMaterial({color:0xe8dcad}));box(.35,.15,.05,x,.8,-2.17,new THREE.MeshBasicMaterial({color:0x942a23}));}
+      car.position.set(spot.x,0,spot.z);group.add(car);
+      state.colliders.push({minX:spot.x-1,minZ:spot.z-2.2,maxX:spot.x+1,maxZ:spot.z+2.2,h:1.65});
+    }
   }
   state.world.updateMatrixWorld(true);
   if(state.map.open) { state.extraCollMesh=buildCollision(group);state.wallMeshes.push(state.extraCollMesh); }

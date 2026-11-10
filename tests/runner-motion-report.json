@@ -1,0 +1,321 @@
+[
+  {
+    "file": "MAIN HERO.glb",
+    "clips": {
+      "run": {
+        "tracks": 10,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 10,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 65,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 10,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "HERO 1.glb",
+    "clips": {
+      "run": {
+        "tracks": 10,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 10,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 65,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 10,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "HERO 3.glb",
+    "clips": {
+      "run": {
+        "tracks": 10,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 10,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 65,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 10,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "runner-run.glb",
+    "clips": {
+      "run": {
+        "tracks": 12,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 12,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 67,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 12,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "runner-fast.glb",
+    "clips": {
+      "run": {
+        "tracks": 10,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 10,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 65,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 10,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "runner-jump.glb",
+    "clips": {
+      "run": {
+        "tracks": 12,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 12,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 67,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 12,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "runner-roll.glb",
+    "clips": {
+      "run": {
+        "tracks": 12,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 10,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 12,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 67,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 12,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "futuristic_soldier_free.glb",
+    "clips": {
+      "run": {
+        "tracks": 8,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 8,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 8,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 52,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 8,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "winter_soldier_-_summer_soldier.glb",
+    "clips": {
+      "run": {
+        "tracks": 6,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 6,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 6,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 14,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 6,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "crimson_fire_demon_-_triposr_vs_supavoxel.glb",
+    "clips": {
+      "run": {
+        "tracks": 6,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 6,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 6,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 6,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 6,
+        "duration": 1.0666666984558106
+      }
+    }
+  },
+  {
+    "file": "horned_minotaur_demon_-_png_to_stl_-_supavoxel.glb",
+    "clips": {
+      "run": {
+        "tracks": 6,
+        "duration": 0.6666666865348816
+      },
+      "fastRun": {
+        "tracks": 6,
+        "duration": 0.5666666626930237
+      },
+      "jump": {
+        "tracks": 6,
+        "duration": 0.8666666746139526
+      },
+      "landRoll": {
+        "tracks": 6,
+        "duration": 1.8333333730697632
+      },
+      "idle": {
+        "tracks": 6,
+        "duration": 1
+      },
+      "walk": {
+        "tracks": 6,
+        "duration": 1.0666666984558106
+      }
+    }
+  }
+]

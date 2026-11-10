@@ -41,8 +41,9 @@ for(const hero of HEROES)test((hero.role||hero.name)+' walks, runs, stops and ke
   const model=clone(template.scene),discard=[];model.traverse(o=>{if(o.isMesh&&/floor/i.test(o.name))discard.push(o);});discard.forEach(o=>o.removeFromParent());
   const root=new THREE.Group();root.add(model);root.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(model),scale=1.8/(box.max.y-box.min.y);model.scale.multiplyScalar(scale);model.position.y=-box.min.y*scale;root.updateMatrixWorld(true);
-  const leg=model.getObjectByName(clips.walk.tracks[0].name.split('.')[0]),idle=leg.quaternion.clone();
+  const leg=model.getObjectByName(clips.walk.tracks[0].name.split('.')[0]);
   const motion=createHeroMotion(model,root,clips);
+  for(let i=0;i<20;i++)motion(1/30,false,0);const idle=leg.quaternion.clone();
   const jumpRotations=[];for(let i=0;i<15;i++){motion(1/30,false,0,{airborne:true,jumping:true});jumpRotations.push(leg.quaternion.clone());}
   assert(jumpRotations.some(q=>q.angleTo(jumpRotations[0])>.1),'jump visibly moves the operator’s legs');
   for(let i=0;i<70;i++)motion(1/30,false,0);
@@ -106,7 +107,7 @@ test('orange-arm soldier and scanned monsters step with both feet and bend both 
           samples[side].push(foot.getWorldPosition(new THREE.Vector3()).z);knees[side].push(knee.quaternion.clone());
         }
       }
-      assert.equal(rig.cur,running?'run':'walk');
+      assert.equal(rig.cur,running?(rig.actions.fastRun?'fastRun':'run'):'walk');
       for(const side of ['l','r']){
         assert(Math.max(...samples[side])-Math.min(...samples[side])>.12,type+' '+side+' foot steps forwards and backwards');
         assert(knees[side].some(q=>q.angleTo(knees[side][0])>.2),type+' '+side+' knee bends');

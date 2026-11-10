@@ -39,7 +39,7 @@ test('Touch users can reach deployment and start without pointer lock',()=>{
   assert.match(css,/@media\(max-width:520px\)/);
   assert.match(css,/\.rw-footer \{position:sticky/);
   assert.match(game,/if\(touchDevice\)\s*\{\s*lock\(\);/);
-  assert.match(game,/MAP_SELECTION_ORDER = \['outpost', 'yard', 'oldquarter', 'ep73', 'skibidi', 'crypt', 'island'\]/);
+  assert.match(game,/MAP_SELECTION_ORDER = \['outpost', 'yard', 'oldquarter', 'ep73', 'skibidi', 'crypt', 'island', 'royale'\]/);
 });
 
 test('Voice controls are integrated with lobby and not a permanent bottom bar',()=>{

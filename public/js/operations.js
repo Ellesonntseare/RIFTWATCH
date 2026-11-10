@@ -22,17 +22,26 @@ export function createOperations(api) {
   function place(kind, pos, id=++nextId) {
     const group = new THREE.Group(), color = colors[kind];
     const gun=/^gun[01]$/.test(kind);
-    const sprite=!!textures[art[kind]];
+    const supplyDrop=kind==='cache'||kind==='supply';
+    const sprite=!supplyDrop&&!!textures[art[kind]];
     const body = sprite?new THREE.Sprite(new THREE.SpriteMaterial({map:textures[art[kind]],transparent:true,alphaTest:0.06,depthWrite:false})):gun?(api.weaponPickup?.(Number(kind.slice(-1)))||new THREE.Mesh(new THREE.BoxGeometry(.07,.1,.7),new THREE.MeshStandardMaterial({color:0x45535a}))):new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x142e34, emissive: color, emissiveIntensity: 0.45, metalness: 0.6, roughness: 0.3 }));
     body.position.y = 0.8; group.add(body);
     if(sprite)body.scale.set(kind==='shield'?1.25:kind==='med'?1.0:1.18,kind==='med'?1.0:1.18,1);
     if(gun){body.rotation.z=Math.PI/2;body.position.y=.085;}
     else if(!sprite){const edges = new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), new THREE.LineBasicMaterial({ color })); body.add(edges);}
+    if(supplyDrop){
+      body.material.color.setHex(0xe8af25);body.material.emissive.setHex(0x604000);body.material.emissiveIntensity=.15;
+      body.scale.set(2,1.6,1.6);body.position.y=.52;
+      const steel=new THREE.MeshStandardMaterial({color:0x26323c,metalness:.7,roughness:.4});
+      for(const x of [-.45,.45]){const strap=new THREE.Mesh(new THREE.BoxGeometry(.12,1.1,1.1),steel.clone());strap.position.set(x,.55,0);group.add(strap);}
+      const lid=new THREE.Mesh(new THREE.BoxGeometry(1.4,.12,1.16),steel);lid.position.y=1.1;group.add(lid);
+      const beacon=new THREE.Mesh(new THREE.CylinderGeometry(.14,.65,18,12,1,true),new THREE.MeshBasicMaterial({color:0xffd760,transparent:true,opacity:.18,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));beacon.position.y=9;beacon.name='supply-beacon';beacon.visible=false;group.add(beacon);
+    }
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.65 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.08; group.add(ring);
     if (kind === 'relay') {
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.35, 8, 8, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, depthWrite: false })); beam.position.y = 4; group.add(beam);
     }
-    if(kind!=='relay')group.scale.setScalar(.75);
+    if(kind!=='relay'&&!supplyDrop)group.scale.setScalar(.75);
     group.position.copy(pos); state.world.add(group);
     const item = { id,kind, group, body, pos: pos.clone(), age: 0,pending:0 }; items.push(item); return item;
   }
@@ -111,7 +120,8 @@ export function createOperations(api) {
     let prompt = '';
     for (const item of [...items]) {
       item.age += dt;
-      if(!/^gun[01]$/.test(item.kind)){if(!item.body.isSprite)item.body.rotation.y += dt * 0.6;item.body.position.y = (item.kind==='relay'?.9:.72) + Math.sin(item.age * 2) * (item.kind==='relay'?.1:.04);}
+      if(item.kind==='cache'||item.kind==='supply'){const beam=item.group.getObjectByName('supply-beacon');if(beam){const distance=item.pos.distanceTo(P.pos);beam.visible=distance<65;beam.material.opacity=Math.max(0,Math.min(.22,(65-distance)/100));}}
+      else if(!/^gun[01]$/.test(item.kind)){if(!item.body.isSprite)item.body.rotation.y += dt * 0.6;item.body.position.y = (item.kind==='relay'?.9:.72) + Math.sin(item.age * 2) * (item.kind==='relay'?.1:.04);}
       if (item.kind === 'relay' || item.pos.distanceTo(P.pos) > 2 || !clearPath(P.pos, item.pos)) continue;
       const wants=item.kind==='cache'||/^gun[01]$/.test(item.kind)?interact:item.kind==='med'?P.hp<P.maxHp:item.kind==='ammo'?api.needsAmmo?.()??true:item.kind==='c4'?P.c4<6:true;
       if(item.kind==='cache')prompt=(api.touchDevice?'TAP HOLD E':'[E]')+' OPEN MYSTERY CACHE';

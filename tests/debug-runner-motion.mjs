@@ -1,0 +1,6 @@
+import fs from 'node:fs/promises';import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';import {clone} from 'three/addons/utils/SkeletonUtils.js';import {heroMotionClips,createHeroMotion} from '../public/js/hero-motion.js';
+async function asset(name){let path='models/'+name;try{await fs.access(path);}catch{path='models/web/'+name;}const b=await fs.readFile(path),l=new GLTFLoader();l.register(()=>({name:'NoTextures',loadTexture:()=>Promise.resolve(new THREE.Texture())}));return l.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');}
+const t=await asset('MAIN HERO.glb'),d=await asset('futuristic_soldier_free.glb'),pack=await asset('mixamo-movement-pack.glb'),clips=await heroMotionClips('MAIN HERO.glb',t.scene,d,pack,true);
+const model=clone(t.scene),root=new THREE.Group();root.add(model);root.updateMatrixWorld(true);const motion=createHeroMotion(model,root,clips),track=clips.walk.tracks.find(t=>/LeftLeg/.test(t.name));const bone=model.getObjectByName(track.name.split('.')[0]);console.log('BONE',bone.name);
+for(let i=0;i<15;i++)motion(1/30,false,0,{airborne:true,jumping:true});for(let i=0;i<70;i++)motion(1/30,false,0);for(let i=0;i<35;i++)motion(1/30,true,4);
+for(let i=0;i<30;i++){motion(1/30,true,4);if(i%5===0)console.log(i,bone.quaternion.toArray());}

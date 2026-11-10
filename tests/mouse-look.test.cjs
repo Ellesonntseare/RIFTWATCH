@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const main=fs.readFileSync('public/js/main.js','utf8');
-const source=main.slice(main.indexOf('function mouseLockFailed()'),main.indexOf('async function startGame'));
+const source=main.slice(main.indexOf('function mouseLockFailed()'),main.indexOf('let royale=null'));
 function setup(request){
  const state={mode:'playing',paused:true,shopOpen:false},document={pointerLockElement:null,body:{classList:{remove(){},add(){}}}},canvas={requestPointerLock:request},status={textContent:''},keys={};
  const factory=new Function('state','document','renderer','$','network','operations','keys','touchDevice','touchMove',`function setRunLock(){};function cancelIcePreview(){};let locked=false,mouseDown=false,aimHeld=false,aimToggle=false;${source};return {lock,mouseLockFailed,get locked(){return locked}};`);

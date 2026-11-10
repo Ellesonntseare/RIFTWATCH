@@ -1,4 +1,9 @@
 export const HEROES = [
+  {id:'runner-fast',role:'SPRINT SPECIALIST',file:'runner-fast.glb',hp:100,speed:6.5,reload:1,description:'Operator supplied with the Fast Run animation.',trait:'QUICK STRIDE',traitInfo:'100 health · fast movement',accent:0xffbd77},
+  {id:'runner-run',role:'FIELD RUNNER',file:'runner-run.glb',hp:100,speed:6,reload:1,description:'Running character variant from your supplied FBX.',trait:'STEADY PACE',traitInfo:'100 health · balanced movement',accent:0x9ed5ff},
+  {id:'runner-jump',role:'PATHFINDER',file:'runner-jump.glb',hp:100,speed:6,reload:1,description:'Jumping character variant from your supplied FBX.',trait:'AIR CONTROL',traitInfo:'100 health · balanced movement',accent:0xb3edaf},
+  {id:'runner-roll',role:'SCOUT RUNNER',file:'runner-roll.glb',hp:100,speed:6,reload:1,description:'Landing character variant from your supplied FBX.',trait:'RECOVERY',traitInfo:'100 health · balanced movement',accent:0xd4b8ff},
+
   { id:'personal',role:'FIELD COMMANDER',file:'MAIN HERO.glb',hp:110,speed:6,reload:1,description:'Your personal operator. A versatile frontline fighter with balanced mobility and extra resilience.',trait:'STEADY HAND',traitInfo:'110 health · balanced movement · standard reload',accent:0xa4ffe1 },
   { id:'tactical',role:'RECON SPECIALIST',file:'MAIN HERO.glb',hp:90,speed:6.8,reload:.85,description:'Fast through the ruins and quick on the reload. Stay moving, find an angle, and strike before the enemy settles.',trait:'QUICK RESPONSE',traitInfo:'15% faster reload · high mobility · lighter armor',accent:0x8bd9ff },
   { id:'vanguard',role:'ASSAULT OPERATOR',file:'HERO 3.glb',hp:130,speed:5.5,reload:1,description:'A hardened assault operator built to hold dangerous routes. Trades a little speed for the health to stay in the fight.',trait:'HOLD THE LINE',traitInfo:'130 health · reinforced armor · measured movement',accent:0xffc68b },

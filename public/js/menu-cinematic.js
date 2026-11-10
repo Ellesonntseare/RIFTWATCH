@@ -216,7 +216,7 @@ function initializeCinematicMenu() {
   new MutationObserver(syncMenuVisibility).observe(menu,{attributes:true,attributeFilter:['class']});
   new MutationObserver(syncMenuVisibility).observe($('hud'),{attributes:true,attributeFilter:['class']});
   syncMenuVisibility();
-  const descriptions = {campaign:'Recover the relay. Survive ten sectors and extract.',endless:'Survive wave after wave of hostile forces.',hunt:'Track 30 targets in the island wilderness.',duel:'Create a private two-player room. First to 5 eliminations.'};
+  const descriptions = {royale:'Loot supplies, stay inside the safe zone and outlast 20 rivals. Solo mode.',campaign:'Recover the relay. Survive ten sectors and extract.',endless:'Survive wave after wave of hostile forces.',hunt:'Track 30 targets in the island wilderness.',duel:'Create a private two-player room. First to 5 eliminations.'};
   const syncMode = () => {
     const mode = modes.querySelector('.modebtn.sel')?.dataset.mode || 'campaign';
     $('rw-mode-description').textContent = descriptions[mode];

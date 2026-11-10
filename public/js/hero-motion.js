@@ -1,3 +1,4 @@
+import {RUNNER_MOTION} from './runner-motion-data.js';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone,retargetClip} from 'three/addons/utils/SkeletonUtils.js';
@@ -55,6 +56,7 @@ export async function heroMotionClips(file,targetTemplate,sourceTemplate=null,mo
         if(clip.tracks.length)result[mode]=clip;
       }
     }
+    for(const [mode,data] of Object.entries(RUNNER_MOTION[file]||{}))result[mode]=THREE.AnimationClip.parse({...data,uuid:THREE.MathUtils.generateUUID()});
     return result;
   })().catch(e=>{console.warn('Hero animation retarget',e.message);return {};});
   cache.set(key,task);return task;
@@ -64,7 +66,7 @@ export function createHeroMotion(model,root,clips){
   for(const [name,clip]of Object.entries(clips))actions[name]=mixer.clipAction(clip);
   const groundFeet=createFootGrounding(model,root),punchGrip=createWeaponGrip(model,root);
   const punchRight=new THREE.Vector3(),punchLeft=new THREE.Vector3();let punchDuration=.65;
-  let active=null,oneShot=null,remaining=0,wasJumping=false,wasDead=false,deathTime=0,deathFloor=0,groundCorpse,deathSettled=false,corpseOffset=0;
+  let active=null,oneShot=null,remaining=0,wasJumping=false,wasDead=false,deathTime=0,deathFloor=0,groundCorpse,deathSettled=false,corpseOffset=0,airTime=0,wasAirborne=false;
   function play(name,duration){
     const action=actions[name];if(!action)return false;
     if(!['fireRifle','throw','punch'].includes(name)&&active){actions[active].fadeOut(.1);active=null;}
@@ -79,14 +81,18 @@ export function createHeroMotion(model,root,clips){
       wasDead=true;update.handsBusy=true;if(deathSettled){root.position.y=deathFloor+corpseOffset;return;}deathTime+=dt;mixer.update(dt);deathSettled=deathTime>=(clips.death?.duration||1.5);groundCorpse(deathFloor,deathSettled);corpseOffset=root.position.y-deathFloor;return;
     }
     if(wasDead){mixer.stopAllAction();wasDead=false;active=null;oneShot=null;}
+    if(airborne)airTime+=dt;
+    if(!airborne&&wasAirborne){if(airTime>.85&&actions.landRoll)play('landRoll',1.05);airTime=0;}
+    wasAirborne=airborne;
     if(jumping&&!wasJumping)play('jump',.65);
     wasJumping=jumping;
     if(!airborne&&oneShot==='jump'){actions.jump.fadeOut(.12);oneShot=null;}
     if(oneShot){remaining-=dt;if(remaining<=.16&&!(oneShot==='jump'&&airborne)){actions[oneShot].fadeOut(.15);oneShot=null;}}
+    moving=!!moving&&speed>.15;
     const blocksLocomotion=oneShot&&!['fireRifle','throw','punch'].includes(oneShot);
-    const desired=blocksLocomotion?null:moving?(lateral&&actions.strafe?'strafe':(running??speed>7)&&actions.run?'run':'walk'):(actions.idle?'idle':null);
-    if(desired!==active){if(active)actions[active].fadeOut(.15);if(desired){const previous=active?actions[active]:null,phase=previous?previous.time/previous.getClip().duration:0;const next=actions[desired];next.reset();if(previous&&['walk','run','strafe'].includes(active))next.time=(phase%1)*next.getClip().duration;next.setEffectiveWeight(1).fadeIn(.22).play();}active=desired;}
-    if(active&&active!=='idle')actions[active].timeScale+=(THREE.MathUtils.clamp((speed||4)/(active==='run'?8:4),.6,1.65)-actions[active].timeScale)*(1-Math.exp(-dt*10));
+    const desired=blocksLocomotion?null:moving?(lateral&&actions.strafe?'strafe':(running??speed>7)&&actions.run?(actions.fastRun?'fastRun':'run'):'walk'):(actions.idle?'idle':null);
+    if(desired!==active){if(active)actions[active].fadeOut(.15);if(desired){const previous=active?actions[active]:null,phase=previous?previous.time/previous.getClip().duration:0;const next=actions[desired];next.reset();if(previous&&['walk','run','fastRun','strafe'].includes(active))next.time=(phase%1)*next.getClip().duration;next.setEffectiveWeight(1).fadeIn(.22).play();}active=desired;}
+    if(active&&active!=='idle')actions[active].timeScale+=(THREE.MathUtils.clamp((speed||4)/(['run','fastRun'].includes(active)?8:4),.6,1.65)-actions[active].timeScale)*(1-Math.exp(-dt*10));
     update.handsBusy=!!oneShot&&oneShot!=='fireRifle';
     mixer.update(dt);
     if(oneShot==='punch'){
@@ -94,7 +100,7 @@ export function createHeroMotion(model,root,clips){
       punchRight.set(-.18+extension*.08,1.34,.23+extension*.53);punchLeft.set(.24,1.28,.25);
       punchGrip(punchRight,punchLeft);
     }
-    if(!airborne&&(!oneShot||['punch','fireRifle','throw'].includes(oneShot)))groundFeet();
+    if(!airborne&&(!oneShot||['punch','fireRifle','throw','landRoll'].includes(oneShot)))groundFeet();
   };
   update.play=play;
   return update;

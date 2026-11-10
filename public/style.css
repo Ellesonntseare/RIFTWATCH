@@ -386,3 +386,23 @@ button:focus-visible { outline:2px solid var(--mint); outline-offset:4px; }
 
 .loading-intro-header{display:none}.cinematic-loading .loading-intro-header{position:absolute;top:6%;left:5%;right:5%;display:flex;justify-content:space-between;align-items:center;gap:20px;z-index:2;color:#e5f7ef;font:bold clamp(14px,2vw,27px) system-ui;letter-spacing:.15em;text-shadow:0 2px 15px #000}.cinematic-loading .loading-intro-header button{font:11px Consolas,monospace;letter-spacing:1px;padding:12px;background:#07181bc9;color:#d4fff0;border:1px solid #a6ddca;white-space:nowrap}#map-loading.cinematic-loading{background:linear-gradient(#020609bb 0,transparent 25%,transparent 55%,#020609dd 100%)}.cinematic-loading .loading-panel{position:absolute;bottom:4%;right:4%;width:min(420px,90vw);display:block;background:#06151bd9}.cinematic-loading .loading-art{display:none}.cinematic-loading .loading-body{padding:16px}.cinematic-loading .loading-body h2{font-size:24px;margin:8px 0}.cinematic-loading .loading-tip{display:none}.cinematic-loading .loading-stages{font-size:9px}.cinematic-loading .loading-stages li{padding:4px 8px}
 @media(max-height:500px){.cinematic-loading .loading-panel{width:300px;bottom:3%;right:3%}.cinematic-loading .loading-body{padding:10px}.cinematic-loading .loading-stages{display:none}.cinematic-loading .loading-body h2{font-size:20px}.cinematic-loading .loading-intro-header{top:5%;left:3%;right:3%;font-size:13px;letter-spacing:1px}}
+
+/* Machined optic housing; the lens keeps the actual aimed scene visible. */
+#scope-overlay{background:radial-gradient(circle at center,transparent 0 35vmin,rgba(4,8,12,.48) 39vmin,rgba(4,8,12,.72) 100%)}
+#scope-overlay::after{width:75vmin;height:75vmin;border:4.5vmin solid #171d24;background:transparent;box-shadow:inset 0 0 0 3px #57616b,inset 0 0 0 7px #0a0f15,inset 0 0 18px 10px #000b,0 0 0 2px #71808a,0 0 0 7px #11171e,0 0 0 9px #343e49,0 12px 24px #000b}
+#scope-overlay::before{content:'';position:absolute;left:50%;top:50%;width:65vmin;height:65vmin;transform:translate(-50%,-50%);border-radius:50%;background:linear-gradient(90deg,transparent calc(50% - .5px),#82c5b388 50%,transparent calc(50% + .5px)),linear-gradient(0deg,transparent calc(50% - .5px),#82c5b388 50%,transparent calc(50% + .5px));box-shadow:inset 0 0 35px #0009}
+/* Field armory: credit-backed purchases, responsive item cards. */
+#armory-open{position:absolute;right:32%;top:43%;pointer-events:auto;min-width:48px;min-height:48px;background:#151d28bb;border:1px solid #d4dce066;border-radius:50%;color:#f7ce65;font:bold 12px Consolas,monospace}
+#shop{inset:4vh auto 4vh 3vw;width:min(720px,85vw);padding:18px;align-items:stretch;justify-content:flex-start;gap:12px;background:linear-gradient(135deg,#111924f5,#0a1019f5);border:1px solid #596171;border-top:3px solid #e5b74d;backdrop-filter:none;overflow:hidden}
+#shop h2{font:700 20px Consolas,monospace;margin:0;padding-right:100px}
+#shopcr{position:absolute;right:18px;top:18px;color:#f6ca59;font-weight:bold}
+.shop-tabs{display:flex;gap:8px;flex:none}.shop-tabs button{background:#202936;color:#b9c2ce;border:1px solid #495261;padding:10px;min-height:42px}.shop-tabs button.selected{color:#f4cc60;border-bottom:3px solid #f4cc60}
+#shopgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;overflow:auto;min-height:0;flex:1;width:100%;touch-action:pan-y;align-content:start}
+#shopgrid .card{position:relative;min-width:0;min-height:155px;padding:8px;text-align:left;background:linear-gradient(#35404b,#18212b);border:1px solid #65707a;display:flex;flex-direction:column;gap:5px;color:#fff}
+#shopgrid .card:disabled{opacity:.55}#shopgrid .card b{font:11px Consolas,monospace}#shopgrid .card small{font:10px/1.3 Consolas,monospace;color:#b7c5d2}#shopgrid .cost{margin-top:auto;color:#f4cc60}
+.shop-item-art{height:58px;display:grid;place-items:center}.shop-item-art img{max-width:100%;height:58px;object-fit:contain}.shop-item-art svg{width:100%;height:58px;fill:#a9bac6;stroke:#e3edf4;stroke-width:1}
+#shopnext{align-self:flex-end;min-height:44px;background:#f0c758;color:#151b24;border:0;padding:10px 24px;font-weight:bold}
+@media(max-height:500px){#shop{inset:2vh auto 2vh 2vw;width:76vw;padding:10px;gap:6px}#shop h2{font-size:15px}#shopcr{top:10px;right:10px}#shopgrid .card{min-height:128px}.shop-item-art,.shop-item-art img,.shop-item-art svg{height:40px}}
+@media(max-width:520px){#shop{width:96vw}#shopgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+#royale-controls{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;z-index:12}#royale-controls.hidden{display:none}#royale-controls button{padding:10px 16px;background:#102733dd;color:#dffaff;border:1px solid #61bfd0;min-height:44px}

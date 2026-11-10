@@ -4,7 +4,7 @@ import * as THREE from 'three';
 export function createWeaponGrip(model,root){
   const limbs=[];
   for(const [side,sign]of [['Right',-1],['Left',1]]){
-    let upper,lower,hand;model.traverse(o=>{if(!o.isBone)return;if(new RegExp(side+'Arm_\\d+$').test(o.name))upper=o;if(new RegExp(side+'ForeArm_\\d+$').test(o.name))lower=o;if(new RegExp(side+'Hand_\\d+$').test(o.name))hand=o;});
+    let upper,lower,hand;model.traverse(o=>{if(!o.isBone)return;if(new RegExp(side+'Arm(?:_\\d+)?$').test(o.name))upper=o;if(new RegExp(side+'ForeArm(?:_\\d+)?$').test(o.name))lower=o;if(new RegExp(side+'Hand(?:_\\d+)?$').test(o.name))hand=o;});
     if(!upper||!lower||!hand)continue;
     root.updateMatrixWorld(true);
     const a=upper.getWorldPosition(new THREE.Vector3()),b=lower.getWorldPosition(new THREE.Vector3()),c=hand.getWorldPosition(new THREE.Vector3());

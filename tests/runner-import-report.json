@@ -1,0 +1,150 @@
+[
+  {
+    "file": "Fast Run.fbx",
+    "output": "runner-fast.glb",
+    "bytes": 7182036,
+    "meshes": [
+      [
+        "Ch31_Body",
+        9272
+      ],
+      [
+        "Ch31_Collar",
+        1850
+      ],
+      [
+        "Ch31_Eyelashes",
+        550
+      ],
+      [
+        "Ch31_Hair",
+        10724
+      ],
+      [
+        "Ch31_Pants",
+        2854
+      ],
+      [
+        "Ch31_Shoes",
+        2094
+      ],
+      [
+        "Ch31_Sweater",
+        3380
+      ]
+    ],
+    "bones": [
+      [
+        "Armature",
+        65
+      ]
+    ],
+    "clip": "fastRun",
+    "frames": [
+      1.0,
+      17.0
+    ]
+  },
+  {
+    "file": "Falling To Roll.fbx",
+    "output": "runner-roll.glb",
+    "bytes": 1113648,
+    "meshes": [
+      [
+        "Boy01_Body_Geo",
+        3980
+      ],
+      [
+        "Boy01_Brows_Geo",
+        68
+      ],
+      [
+        "Boy01_Eyes_Geo",
+        97
+      ],
+      [
+        "h_Geo",
+        49
+      ]
+    ],
+    "bones": [
+      [
+        "Armature",
+        83
+      ]
+    ],
+    "clip": "landRoll",
+    "frames": [
+      1.0,
+      55.0
+    ]
+  },
+  {
+    "file": "Jumping Up.fbx",
+    "output": "runner-jump.glb",
+    "bytes": 1092224,
+    "meshes": [
+      [
+        "Boy01_Body_Geo",
+        3980
+      ],
+      [
+        "Boy01_Brows_Geo",
+        68
+      ],
+      [
+        "Boy01_Eyes_Geo",
+        97
+      ],
+      [
+        "h_Geo",
+        49
+      ]
+    ],
+    "bones": [
+      [
+        "Armature",
+        83
+      ]
+    ],
+    "clip": "jump",
+    "frames": [
+      1.0,
+      26.0
+    ]
+  },
+  {
+    "file": "Running.fbx",
+    "output": "runner-run.glb",
+    "bytes": 1091116,
+    "meshes": [
+      [
+        "Boy01_Body_Geo",
+        3980
+      ],
+      [
+        "Boy01_Brows_Geo",
+        68
+      ],
+      [
+        "Boy01_Eyes_Geo",
+        97
+      ],
+      [
+        "h_Geo",
+        49
+      ]
+    ],
+    "bones": [
+      [
+        "Armature",
+        83
+      ]
+    ],
+    "clip": "run",
+    "frames": [
+      1.0,
+      20.0
+    ]
+  }
+]

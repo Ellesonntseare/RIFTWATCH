@@ -1,3 +1,8 @@
+import {prepareRoyalePickups} from './royale-pickups.js';
+import {spectatorTarget,spectatorHeading} from './royale-spectator.js';
+import {createRoyale} from './royale-rules.js';
+import {createAttackCoordinator} from './attack-coordinator.js';
+import {createBrain,perceive,findRoute,combatPlan} from './bot-brain.js';
 import {downloadMap,downloadLabel} from './map-download.js?v=20261014-progress';
 import {isWaterSurface,submergedFloor,mapWorldScale} from './terrain.js';
 import {renderRadar,renderFullMap} from './radar.js';
@@ -199,8 +204,9 @@ function setWeaponVisual(i) {
   flashMesh.position.copy(muzzles[i]).z -= 0.05; muzzleLight.position.copy(muzzles[i]).z -= 0.1;
   flashMesh.material.color.setHex(i === 1 ? 0x66ddff : 0xffffff);
 }
-function selectFists(){if(P.dead)return;P.unarmed=true;P.reloading=0;mouseDown=false;aimHeld=false;aimToggle=false;sfx.swap();}
+function selectFists(){if(P.dead||state.gameMode==='royale')return;P.unarmed=true;P.reloading=0;mouseDown=false;aimHeld=false;aimToggle=false;sfx.swap();}
 function switchWeapon(i) {
+  if(state.gameMode==='royale')return;
   if(P.dead)return;P.unarmed=false;
   if (i === P.weapon) return;
   ws[P.weapon] = { ammo: P.ammo, reserve: P.reserve };
@@ -495,7 +501,7 @@ function castMapRay(o, d, far) {
     const extra=state.extraCollMesh?.geometry.boundsTree?.raycastFirst(_r,THREE.DoubleSide,0,hit?.distance??far);
     return extra && (!hit || extra.distance<hit.distance) ? extra : hit || null;
   }
-  _rc.set(o, d); _rc.far = far; return _rc.intersectObject(cm)[0] || null;
+  _rc.set(o, d); _rc.far = far; return _rc.intersectObjects([cm,...state.streamCollMeshes,...(state.extraCollMesh?[state.extraCollMesh]:[])],false)[0] || null;
 }
 function waterAt(x,z,groundY){
   const cm=state.waterMesh;if(!cm?.geometry.attributes.position.count)return false;
@@ -507,7 +513,7 @@ function waterAt(x,z,groundY){
 }
 function floorAt(x,z,fromY,far=400){_o.set(x,fromY,z);const h=castRay(_o,DOWN,far);return h&&!waterAt(x,z,h.point.y)?h.point.y:null;}
 function resolveOpen(pos, r, feetY, player) {
-  const y0 = feetY || 0, hs = player ? [0.5, 1.2] : [0.6], stp = player ? 1 : 2;
+  const y0 = feetY || 0, hs = [0.5, 1.2], stp = 1;
   for (const hy of hs) for (let i = 0; i < 8; i += stp) {
     _o.set(pos.x, y0 + hy, pos.z); const h = castRay(_o, DIRS[i], r);
     if (h && Math.abs(h.face.normal.y) < 0.65) { const push = r - h.distance; pos.x -= DIRS[i].x * push; pos.z -= DIRS[i].z * push; }
@@ -542,6 +548,77 @@ function resolveCircle(pos, r, feetY, canClimb) {
     if (d < min && d > 1e-6) { pos.x = b.x + dx / d * min; pos.z = b.z + dz / d * min; }
   }
   return floor;
+}
+
+// Sweep movement in short steps so a frame hitch cannot cross a thin wall.
+function moveBody(pos,dx,dz,r,y,climb){
+  const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/Math.min(.18,r*.5)));
+  let floor=y;
+  for(let i=0;i<steps;i++){
+    const x=pos.x,z=pos.z,sx=dx/steps,sz=dz/steps,length=Math.hypot(sx,sz);
+    if(state.collMesh&&length>0){
+      const dir=new THREE.Vector3(sx/length,0,sz/length);
+      let blocked=false;
+      for(const height of [.5,1.2])for(const offset of [-r,0,r]){
+        const origin=new THREE.Vector3(x-dir.z*offset,y+height,z+dir.x*offset);
+        if(castRay(origin,dir,length+.02)){blocked=true;break;}
+      }
+      if(blocked)break;
+    }
+    pos.x+=sx;pos.z+=sz;floor=resolveCircle(pos,r,y,climb);
+    if(floor < -1e8 || (!climb&&state.collMesh&&Math.abs(floor-y)>.7)) {pos.x=x;pos.z=z;return y;}
+  }
+  return floor;
+}
+const attackCoordinator=createAttackCoordinator(3);
+const botSounds=[];let botSoundId=0,routeBudget=0;
+function hearShot(pos){botSounds.push({id:++botSoundId,x:pos.x,z:pos.z,until:state.time+2});if(botSounds.length>40)botSounds.shift();}
+function botPathClear(m,a,b){
+  const r=m.T.radius+.12,d=Math.hypot(b.x-a.x,b.z-a.z),n=Math.max(1,Math.ceil(d/.7));
+  for(let i=1;i<=n;i++){
+    const x=a.x+(b.x-a.x)*i/n,z=a.z+(b.z-a.z)*i/n;
+    if(fieldBlocked(x,z,r))return false;
+    if(state.map.island&&Math.hypot(x,z)>state.map.size[0]*.43-r-1)return false;
+    if(state.collMesh){const y=floorAt(x,z,(m.y||0)+.6,1.3);if(y===null||Math.abs(y-(m.y||0))>.6)return false;}
+  }
+  if(state.collMesh&&d>.01){const dir=new THREE.Vector3((b.x-a.x)/d,0,(b.z-a.z)/d);
+    for(const offset of [-r,0,r])if(castRay(new THREE.Vector3(a.x-dir.z*offset,(m.y||0)+.8,a.z+dir.x*offset),dir,d))return false;
+  }
+  return true;
+}
+function botDestination(m,candidates){
+  m.brain ||= createBrain(Math.random,state.difficulty);
+  const brain=m.brain;
+  perceive(brain,{id:'monster-'+m.id,x:m.x,z:m.z,y:m.y,yaw:m.group.rotation.y},candidates,state.time,(q,d)=>{
+    const previous=m.target;m.target={id:q.player.id,pos:q.player.pos,dead:q.dead};
+    const result=hasLOS(m,d,true);m.target=previous;return result;
+  },botSounds);
+  const seen=candidates.find(p=>p.id===brain.target);
+  // A lost target is replaced by a detached remembered point, never its live coordinates.
+  if(seen){
+    // Only nearby allies receive a stale sighting, never a live player reference.
+    if(state.time>(m.reportAt||0)){m.reportAt=state.time+3;
+      for(const ally of state.monsters)if(ally!==m&&!ally.dead&&ally.brain&&!ally.brain.memory&&Math.hypot(ally.x-m.x,ally.z-m.z)<28){
+        ally.brain.memory={x:seen.x+rand(-3,3),y:seen.y,z:seen.z+rand(-3,3),until:state.time+7,kind:'report'};
+      }
+    }
+    return seen.player;
+  }
+  if(brain.memory&&Math.hypot(brain.memory.x-m.x,brain.memory.z-m.z)<2)brain.memory=null;
+  if(!brain.memory&&(!m.patrol||Math.hypot(m.patrol.x-m.x,m.patrol.z-m.z)<2||m.stuckN>=3)){
+    m.patrol=null;m.route=null;m.stuckN=0;
+    for(let i=0;i<12;i++){
+      // Search known deployment territory, not the hidden player's current position.
+      const deployment=state.map.start||[0,0],search=Math.random()<.65;
+      const center=search?{x:deployment[0],z:deployment[1]}:m;
+      const angle=rand(0,Math.PI*2),radius=rand(8,search?40:24),q={x:center.x+Math.sin(angle)*radius,z:center.z+Math.cos(angle)*radius};
+      if(Math.abs(q.x)>state.map.size[0]/2-2||Math.abs(q.z)>state.map.size[1]/2-2||fieldBlocked(q.x,q.z,m.T.radius+.2))continue;
+      if(state.collMesh&&floorAt(q.x,q.z,(m.y||0)+.6,1.3)===null)continue;
+      m.patrol=q;break;
+    }
+  }
+  const goal=brain.memory||m.patrol||m;
+  return {id:null,pos:{x:goal.x,y:goal.y??m.y??0,z:goal.z},dead:true};
 }
 
 // ------------------------------------------------------------------ particles / fx
@@ -727,9 +804,12 @@ function updateFloaters(dt) {
   }
 }
 function updateMonsters(dt) {
+  routeBudget=1;
+  attackCoordinator.update(state.monsters.map(m=>({id:m.id,dead:m.dead,target:m.brain?.target??null,visible:!!m.target&&!m.target.dead&&!!m.brain?.target,distance:m.target?Math.hypot(m.target.pos.x-m.x,m.target.pos.z-m.z):Infinity})),state.time);
+  const candidates=combatPlayers().map(p=>({id:p.id||'local-player',x:p.pos.x,y:p.pos.y,z:p.pos.z,dead:p.dead,player:p}));
   for (let i = state.monsters.length - 1; i >= 0; i--) {
     const m = state.monsters[i], T = m.T;
-    const player=closestPlayer(m);m.target=player;
+    const player=m.dead?{pos:{x:m.x,y:m.y,z:m.z},dead:true}:botDestination(m,candidates);m.target=player;
     m.flash -= dt;
     if (m.dead) {
       const deadBlob=m.group.userData.rig?.blob;if(deadBlob)deadBlob.visible=false;
@@ -741,43 +821,59 @@ function updateMonsters(dt) {
       if(m.group.userData.rig?.corpseSettled&&m.deadT>3){state.corpses.push(m);state.monsters.splice(i,1);}
       continue;
     }
+    m.attackAllowed=attackCoordinator.allows(m.id);
+    if(!m.attackAllowed){m.windup=0;m.attackAnim=0;m.burstLeft=0;m.slamT=0;}
     const dx = player.pos.x - m.x, dz = player.pos.z - m.z, dist = Math.hypot(dx, dz) || 0.001;
     setMonsterDetail(m,Math.hypot(m.x-P.pos.x,m.z-P.pos.z),touchDevice||graphicsMode==='performance');
-    if (state.map.ring && dist > 75 && !T.stationary) { const s = ringSpot(); if (s) { m.x = s[0]; m.z = s[1]; m.y = s[2] || 0; m.lastX = m.x; m.lastZ = m.z; m.group.position.set(m.x, m.y || 0, m.z); } continue; }
+
     m.alertT=Math.max(0,(m.alertT||0)-dt);
     m.fleeT=Math.max(0,(m.fleeT||0)-dt);const fleeing=m.type==='runner'&&m.fleeT>0&&!player.dead;
     m.running=!T.stationary&&!player.dead&&(T.clip==='run'||dist>18);
+    const tactical=!player.dead&&m.brain&&T.ranged?combatPlan(m.brain,{x:m.x,z:m.z,hp:m.hp,maxhp:m.maxhp},{id:player.id||'local',x:player.pos.x,z:player.pos.z},state.time,{
+      walkable:(x,z)=>Math.abs(x)<state.map.size[0]/2-2&&Math.abs(z)<state.map.size[1]/2-2&&!fieldBlocked(x,z,T.radius+.2),
+      visible:(point)=>hasLOS({...m,x:point.x,z:point.z},Math.hypot(player.pos.x-point.x,player.pos.z-point.z),true)
+    },m.attackAllowed):null;
     const nx = dx / dist, nz = dz / dist, speed = T.speed * m.speedMul * (m.running&&T.clip!=='run'?1.55:1);
     m.moveSpeed=speed;
     m.group.rotation.y = angleLerp(m.group.rotation.y, Math.atan2(fleeing?-dx:dx, fleeing?-dz:dz), Math.min(1, dt * 10));
     m.cd -= dt;
     m.shootAnim -= dt;
-    if (T.ranged || T.shoot) { m.losT -= dt; if (m.losT <= 0) { m.losT = 0.25 + Math.random() * 0.15; m.los = hasLOS(m, dist); } }
-    if (T.boss) bossAI(m, dt, dist);
+    if (T.ranged || T.shoot) { m.losT -= dt; if (m.losT <= 0) { m.losT = 0.25 + Math.random() * 0.15; m.los = !player.dead && hasLOS(m, dist); } }
+    if (T.boss && m.attackAllowed && (!player.dead || m.slamT>0)) bossAI(m, dt, dist);
 
     const attacking = T.ranged ? (m.los && dist <= T.range * 0.9) : dist <= T.range * 0.9;
     // Gunners circle an exposed player; runners keep their direct rush.
     if(m.type==='shooter'&&(m.flankT-=dt)<=0){m.flankSide*=-1;m.flankT=rand(1.5,3);}
-    const flanking=m.type==='shooter'&&(m.los||m.alertT>0)&&dist>8&&dist<26&&!player.dead;
-    m.moving = (fleeing||!attacking||flanking) && !player.dead;
-    const retreat = T.ranged && m.los && dist < (T.keep || 7) && !player.dead;
+    const flanking=(m.type==='shooter'||!m.attackAllowed)&&(m.los||m.alertT>0)&&dist>8&&dist<26&&!player.dead;
+    m.moving = player.dead ? dist>1.5 : (fleeing||!attacking||flanking);
+    const retreat = !player.dead && ((!m.attackAllowed&&dist<9) || T.ranged && m.los && (dist < (T.keep || 7) || m.hp/m.maxhp < .15 + (m.brain?.caution||0)*.25));
     if (retreat) m.moving = true;
     if ((T.ranged && m.windup > 0) || m.slamT > 0 || T.stationary) m.moving = false;
     if (m.moving) {
       let mx = nx, mz = nz;
+      if(tactical){const d=Math.hypot(tactical.goal.x-m.x,tactical.goal.z-m.z)||1;mx=(tactical.goal.x-m.x)/d;mz=(tactical.goal.z-m.z)/d;}
+      if(m.route?.length&&Math.hypot(m.route[0].x-m.x,m.route[0].z-m.z)<1)m.route.shift();
+      if(state.time>(m.routeAt||0)&&routeBudget>0){
+        routeBudget--;m.routeAt=state.time+1.2+Math.random()*.6;
+        const goal=tactical?.goal||{x:player.pos.x,z:player.pos.z};
+        m.route=botPathClear(m,m,goal)?[]:findRoute(m,goal,(a,b)=>botPathClear(m,a,b));
+        if(!m.route.length&&!botPathClear(m,m,goal)&&player.dead)m.patrol=null;
+      }
+      if(m.route?.length){const q=m.route[0],d=Math.hypot(q.x-m.x,q.z-m.z)||1;mx=(q.x-m.x)/d;mz=(q.z-m.z)/d;}
+
        if (retreat||fleeing) { mx = -nx; mz = -nz; }
-       else if(flanking){mx=nx*.25-nz*m.flankSide*.85;mz=nz*.25+nx*m.flankSide*.85;}
+       else if(flanking&&!m.route?.length&&!tactical){mx=nx*.25-nz*m.flankSide*.85;mz=nz*.25+nx*m.flankSide*.85;}
        if (m.strafeT > 0 && !fleeing) { m.strafeT -= dt; mx = nx * 0.35 - nz * m.strafe * 0.9; mz = nz * 0.35 + nx * m.strafe * 0.9; }
       m.navT=(m.navT||0)-dt;
       if(m.navT<=0){m.navT=.18;const reach=Math.max(1.4,T.radius+speed*.35);m.nav=steerAround(mx,mz,(x,z)=>{const px=m.x+x*reach,pz=m.z+z*reach;if(fieldBlocked(px,pz,T.radius+.15))return false;const origin=new THREE.Vector3(m.x,(m.y||0)+.7,m.z),direction=new THREE.Vector3(x,0,z);const hit=state.collMesh?castRay(origin,direction,reach):new THREE.Raycaster(origin,direction,0,reach).intersectObjects(state.wallMeshes,true)[0];if(hit)return false;if(state.collMesh){const y=floorAt(px,pz,(m.y||0)+.7,2);if(y===null||Math.abs(y-(m.y||0))>.7)return false;}return true;},m.strafe||1);}
       mx=m.nav.x;mz=m.nav.z;m.moving=Math.hypot(mx,mz)>.1;
       if(m.moving&&!T.ranged)m.group.rotation.y=angleLerp(m.group.rotation.y,Math.atan2(mx,mz),1-Math.exp(-dt*12));
-      m.x += mx * speed * dt; m.z += mz * speed * dt;
+      moveBody(m,mx*speed*dt,mz*speed*dt,T.radius,m.y||0,false);
     }
     for (const o of state.monsters) {
       if (o === m || o.dead || T.stationary) continue;
       const ox = m.x - o.x, oz = m.z - o.z, od = Math.hypot(ox, oz), min = T.radius + o.T.radius;
-      if (od < min && od > 1e-4) { m.x += ox / od * (min - od) * 0.5; m.z += oz / od * (min - od) * 0.5; }
+      if (od < min && od > 1e-4) { moveBody(m,ox/od*(min-od)*.5,oz/od*(min-od)*.5,T.radius,m.y||0,false); }
     }
     const pos = { x: m.x, z: m.z }, fl = resolveCircle(pos, T.radius, m.y || 0, false); m.x = pos.x; m.z = pos.z;
     if(state.collMesh&&(fl < -1e8 || fl < m.y-1.4)){m.x=m.safeX;m.z=m.safeZ;m.y=m.safeY;m.moving=false;}
@@ -789,12 +885,12 @@ function updateMonsters(dt) {
       if (m.moving && Math.hypot(m.x - m.lastX, m.z - m.lastZ) < speed * 0.6 * 0.25) {
         m.stuckN++;m.navT=0;m.strafe=-(m.strafe||1);
         if (m.strafeT <= 0) { m.strafeT = 1.6; m.strafe = Math.random() < 0.5 ? -1 : 1; }
-        if (m.stuckN >= 6 && dist > 20 && state.map.ring) { const s = ringSpot(); if (s) { m.x = s[0]; m.z = s[1]; m.y = s[2] || 0; m.stuckN = 0; } }
+        if(m.stuckN>=3){m.route=null;m.routeAt=0;m.patrol=null;}
       } else m.stuckN = 0;
       m.lastX = m.x; m.lastZ = m.z; m.stuckT = 0;
     }
 
-    if (!fleeing && !player.dead && dist <= T.range + 0.3 && m.cd <= 0 && m.windup <= 0 && !(m.slamT > 0) && (!T.ranged || m.los)) { m.windup = m.wMax = T.aim ? 0.9 : T.ranged ? 0.5 : T.boss ? 0.6 : 0.35; m.cd = T.cd * (T.ranged ? rand(1, 1.6) : 1); }
+    if (m.attackAllowed && !fleeing && !player.dead && dist <= T.range + 0.3 && m.cd <= 0 && m.windup <= 0 && !(m.slamT > 0) && (!T.ranged || m.los)) { m.windup = m.wMax = T.aim ? 0.9 : T.ranged ? 0.5 : T.boss ? 0.6 : 0.35; m.cd = T.cd * (T.ranged ? rand(1, 1.6) : 1); }
     if (m.windup > 0) {
       m.windup -= dt; m.attackAnim = clamp(1 - m.windup / m.wMax, 0, 1);
       if (m.windup <= 0) { m.attackAnim = 0; if (T.ranged) { if (!player.dead && m.los) { enemyShoot(m); if (T.burst) { m.burstLeft = T.burst - 1; m.burstT = 0.14; } } } else if (dist <= T.range + 0.6 && !player.dead && hasLOS(m,dist)) hurtTarget(player,T.dmg,{x:m.x,z:m.z}); }
@@ -820,9 +916,9 @@ const projGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.65, 5);
 projGeo.rotateX(Math.PI / 2);
 const projectileRay = new THREE.Raycaster(), playerHitbox = new THREE.Box3(), bulletHit = new THREE.Vector3();
 projectileRay.firstHitOnly = true;
-function hasLOS(m, dist) {
+function hasLOS(m, dist, perception=false) {
   const player=m.target || closestPlayer(m);
-  if (dist > (m.T.shoot ? m.T.shoot.range : m.T.range) * 1.2) return false;
+  if (!perception && dist > (m.T.shoot ? m.T.shoot.range : m.T.range) * 1.2) return false;
   const sx = m.x, sy = (m.y || 0) + 1.5, sz = m.z, ex = player.pos.x, ey = player.pos.y + 1.4, ez = player.pos.z;
   if (state.collMesh) {
     _o.set(sx, sy, sz); _d.set(ex - sx, ey - sy, ez - sz); const L = _d.length(); _d.normalize();
@@ -837,9 +933,11 @@ function hasLOS(m, dist) {
 }
 const projMats = {}, UP = new THREE.Vector3(0, 1, 0);
 function enemyShoot(m, S = {}) {
+  if(!m.attackAllowed||!m.target||m.target.dead||!hasLOS(m,Math.hypot(m.target.pos.x-m.x,m.target.pos.z-m.z)))return;
   const T = m.T, player=m.target || closestPlayer(m), n = S.count || 1, col = T.proj ? 0x88e5ff : 0xffd49a;
   const from = new THREE.Vector3(m.x, (m.y || 0) + (T.h || 1.8) * 0.8, m.z);
-  const dir0 = new THREE.Vector3(player.pos.x + rand(-0.3, 0.3), player.pos.y + 1.2 + rand(-0.2, 0.2), player.pos.z + rand(-0.3, 0.3)).sub(from).normalize();
+  const aimError=(state.difficulty==='relaxed'?.65:.3)+(m.moving?.35:0);
+  const dir0 = new THREE.Vector3(player.pos.x + rand(-aimError, aimError), player.pos.y + 1.2 + rand(-0.2, 0.2), player.pos.z + rand(-aimError, aimError)).sub(from).normalize();
   const mat = projMats[col] || (projMats[col] = new THREE.MeshBasicMaterial({ color: col, fog: false }));
   for (let i = 0; i < n; i++) {
     const mesh = new THREE.Mesh(projGeo, mat); mesh.position.copy(from); state.world.add(mesh);
@@ -907,6 +1005,8 @@ function bossAI(m, dt, dist) {
 
 // ------------------------------------------------------------------ upgrade shop
 const UPGRADES = [
+  { id:'rifle', name:'M4A1 / RESUPPLY', desc:'Equip rifle + refill ammunition', cost:180, weapon:0, category:'weapons', on:()=>{switchWeapon(0);P.ammo=magSize();P.reserve=WEAPONS[0].reserve;} },
+  { id:'laser', name:'LASER MG / RESUPPLY', desc:'Equip machine gun + refill ammunition', cost:240, weapon:1, category:'weapons', on:()=>{switchWeapon(1);P.ammo=magSize();P.reserve=WEAPONS[1].reserve;} },
   { id: 'dmg', name: 'DAMAGE', desc: '+12% weapon damage', base: 400, max: 5 },
   { id: 'head', name: 'HEADSHOT POWER', desc: '+0.5x headshot multiplier', base: 400, max: 5 },
   { id: 'mag', name: 'EXTENDED MAGS', desc: '+20% magazine size', base: 300, max: 5 },
@@ -918,18 +1018,24 @@ const UPGRADES = [
     WEAPONS.forEach((w, i) => { const mag = magSize(w), res = w.reserve * 2; if (i === P.weapon) { P.ammo = mag; P.reserve = res; } else ws[i] = { ammo: mag, reserve: res }; }); } },
 ];
 const upCost = u => u.max ? u.base * (up[u.id] + 1) : u.cost;
+let shopCategory='weapons', fieldShop=false;
 function renderShop() {
   $('shopcr').textContent = `$${state.credits}`;
-  $('shopgrid').innerHTML = UPGRADES.map(u => {
+  document.querySelectorAll('[data-shop-category]').forEach(b=>b.classList.toggle('selected',b.dataset.shopCategory===shopCategory));
+  $('shopgrid').innerHTML = UPGRADES.filter(u=>shopCategory==='weapons'?u.category==='weapons':u.category!=='weapons').map(u => {
     const lvl = u.max ? up[u.id] : 0, maxed = u.max && lvl >= u.max, pips = u.max ? '<div class="pips">' + '&#9632;'.repeat(lvl) + '&#9633;'.repeat(u.max - lvl) + '</div>' : '';
-    return `<button class="card ${maxed ? 'maxed' : ''}" data-id="${u.id}" ${maxed || state.credits < upCost(u) ? 'disabled' : ''}><b>${u.name}</b>${u.desc}${pips}<div class="cost">${maxed ? 'MAXED' : '$' + upCost(u)}</div></button>`;
+    const art=u.weapon!==undefined?$('weapon-picture').querySelector(u.weapon===0?'.weapon-m4':'.weapon-laser').outerHTML:`<img loading="lazy" src="/assets/pickups/${({hp:'armor',medkit:'med',ammo:'ammo',c4:'grenades',reload:'stim',mag:'ammo',dmg:'stim',head:'recoil'})[u.id]}.${u.id==='head'?'svg':'webp'}" alt="">`;
+    return `<button class="card ${maxed ? 'maxed' : ''}" data-id="${u.id}" ${maxed || state.credits < upCost(u) ? 'disabled' : ''}><b>${u.name}</b><div class="shop-item-art">${art}</div><small>${u.desc}</small>${pips}<div class="cost">${maxed ? 'MAXED' : '$' + upCost(u)}</div></button>`;
   }).join('');
 }
-function openShop() {
+function openShop(inField=false) {
+  fieldShop=inField;shopCategory='weapons';aimHeld=false;aimToggle=false;cancelIcePreview();$('scope-overlay').classList.add('hidden');
+  $('shopnext').textContent=inField?'RETURN TO MATCH':'NEXT LEVEL ▶';
   state.shopOpen = true; state.paused = true; mouseDown = false; document.exitPointerLock();
-  $('shoptitle').textContent = `LEVEL ${state.wave} CLEARED - UPGRADES`; renderShop(); $('shop').classList.remove('hidden');
+  $('shoptitle').textContent = inField?'FIELD ARMORY':`SECTOR ${state.wave} / ARMORY`; renderShop(); $('shop').classList.remove('hidden');
 }
 function closeShop() {
+  if(fieldShop){fieldShop=false;$('shop').classList.add('hidden');state.shopOpen=false;state.paused=false;lock();return;}
   if(network.role==='guest'){$('shop').classList.add('hidden');state.shopOpen=false;state.paused=false;lock();banner('READY · WAITING FOR THE HOST');return;}
   $('shop').classList.add('hidden'); state.shopOpen = false; state.paused = false; startWave(state.wave + 1); lock();
 }
@@ -940,6 +1046,8 @@ $('shopgrid').addEventListener('click', e => {
   state.credits -= cost; if (u.max) up[u.id]++; if (u.on) u.on(); sfx.pickup(); renderShop();
 });
 $('shopnext').addEventListener('click', closeShop);
+document.querySelectorAll('[data-shop-category]').forEach(b=>b.addEventListener('click',()=>{shopCategory=b.dataset.shopCategory;renderShop();}));
+$('armory-open').addEventListener('click',()=>{if(state.mode==='playing'&&!state.paused&&!P.dead&&!network.role&&state.gameMode!=='duel')openShop(true);});
 
 // ------------------------------------------------------------------ waves
 const aliveCount = () => state.monsters.reduce((n, m) => n + (m.dead ? 0 : 1), 0);
@@ -1059,11 +1167,12 @@ function endMatch(won) {
 }
 
 function updatePlayer(dt) {
+  if(P.dead&&state.gameMode==='royale')return;
   if(P.dead){P.deadT+=dt;if(!network.role&&P.deadT>1.6){endMatch(false);return;}if(state.gameMode!=='duel'&&network.role&&P.deadT>8){P.dead=false;P.deadT=0;P.hp=P.maxHp*.75;P.spawnShield=5;P.damageGrace=0;P.pos.copy(state.coopSpawn||new THREE.Vector3(state.map.start[0],state.map.startY||0,state.map.start[1]));P.safePos.copy(P.pos);P.jumping=false;P.vel.set(0,0,0);banner('BACK IN THE FIGHT');}return;}
   P.damageGrace = Math.max(0,(P.damageGrace || 0)-dt);
   P.spawnShield = Math.max(0,(P.spawnShield || 0)-dt);
   P.sinceHurt = (P.sinceHurt || 0)+dt;
-  if (state.gameMode!=='duel'&&state.difficulty === 'relaxed' && P.sinceHurt > 7 && P.hp < P.maxHp) P.hp = Math.min(P.maxHp,P.hp+3*dt);
+  if (!['duel','royale'].includes(state.gameMode)&&state.difficulty === 'relaxed' && P.sinceHurt > 7 && P.hp < P.maxHp) P.hp = Math.min(P.maxHp,P.hp+3*dt);
   const fwd = clamp((keys.KeyW||keys.ArrowUp ? 1 : 0) - (keys.KeyS||keys.ArrowDown ? 1 : 0) - touchMove.y,-1,1), side = clamp((keys.KeyD||keys.ArrowRight ? 1 : 0) - (keys.KeyA||keys.ArrowLeft ? 1 : 0) + touchMove.x,-1,1);
   const speed = ((runLocked||keys.ShiftLeft||keys.ShiftRight) && fwd > 0&&!isAiming() ? CFG.sprint : CFG.walk) * (isAiming()?.65:1) * (operations.buffs.speed > 0 ? 1.35 : 1);
   const sin = Math.sin(P.yaw), cos = Math.cos(P.yaw);
@@ -1075,7 +1184,7 @@ function updatePlayer(dt) {
   if (jumpPressed && P.onGround) { P.vel.y = CFG.jump; P.onGround = false; P.jumping=true; }
   P.vel.y -= CFG.gravity * dt;
   const previousX=P.pos.x,previousZ=P.pos.z;
-  P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
+  moveBody(P.pos,P.vel.x*dt,P.vel.z*dt,CFG.playerRadius,P.pos.y,true);
   if(state.waterMesh && [ [0,0],[CFG.playerRadius,0],[-CFG.playerRadius,0],[0,CFG.playerRadius],[0,-CFG.playerRadius] ].some(([dx,dz])=>{const x=P.pos.x+dx,z=P.pos.z+dz;_o.set(x,P.pos.y+.6,z);const ground=castRay(_o,DOWN,400);return waterAt(x,z,ground?.point.y??null);})){P.pos.x=previousX;P.pos.z=previousZ;P.vel.x=P.vel.z=0;}
   let floor = resolveCircle(P.pos, CFG.playerRadius, P.pos.y, true);
   if (state.collMesh) {
@@ -1127,24 +1236,30 @@ function updateCamera(dt) {
 
 // ------------------------------------------------------------------ weapons
 function startReload() {
+  if(state.gameMode==='royale'){if(royale?.reload('local'))sfx.reload();return;}
   if (P.unarmed || P.reloading > 0 || P.ammo >= magSize() || P.reserve <= 0 || P.dead) return;
   P.reloadDur = CFG.gun.reload * (1 - 0.12 * up.reload) * selectedHero().reload; P.reloading = P.reloadDur; sfx.reload();
 }
 function handleShooting(dt) {
   if(icePlacement&&mouseDown){mouseDown=false;deployIce();return;}
-  P.fireCd -= dt;
-  if (P.reloading > 0) {
+  const shotInterval=60/CFG.gun.rpm;
+  if(!mouseDown||P.dead)P.fireCd=Math.max(0,P.fireCd-dt);
+  else if(P.triggerHeld)P.fireCd=Math.max(-shotInterval,P.fireCd-dt);
+  P.triggerHeld=mouseDown&&!P.dead;
+  if (P.reloading > 0 && state.gameMode!=='royale') {
     P.reloading -= dt;
     if (P.reloading <= 0) { const take = Math.min(magSize() - P.ammo, P.reserve); P.ammo += take; P.reserve -= take; }
   }
   if (P.dead || meleeTimer>0 || !mouseDown || P.reloading > 0 || P.fireCd > 0) return;
   if(P.unarmed){startMelee();return;}
   if (P.ammo <= 0) { sfx.empty(); P.fireCd = 0.25; startReload(); return; }
-  P.ammo--; P.fireCd = 60 / CFG.gun.rpm; fire();
+  if(state.gameMode!=='royale')P.ammo--; P.fireCd += shotInterval;
+  if(fire()===false)return;
   if(rifleAnimTimer<=0){playAttack('fireRifle',.65);rifleAnimTimer=.65;}
 }
 function playAttack(name,duration){playerAvatar?.playMove(name,duration);attackName=name;attackSeq++;}
 function startMelee(){
+  if(state.gameMode==='royale')return;
   if(state.mode!=='playing'||state.paused||P.dead||meleeTimer>0)return;
   meleeTimer=MELEE_COOLDOWN;meleeContact=MELEE_CONTACT;
   mouseDown=false;aimHeld=false;aimToggle=false;sfx.punchSwing();
@@ -1180,7 +1295,7 @@ function rayNear(m) {                          // cheap box test so we only ray-
   _bx.min.set(m.x - r, y - 0.2, m.z - r); _bx.max.set(m.x + r, y + m.T.h + 0.3, m.z + r);
   return ray.ray.intersectsBox(_bx, _bv) !== null;
 }
-function reactToShot(from,to){const segment=to.clone().sub(from),length=segment.lengthSq();if(!length)return;for(const m of state.monsters){if(m.dead||m.T.stationary)continue;const p=new THREE.Vector3(m.x,(m.y||0)+1,m.z),t=clamp(p.clone().sub(from).dot(segment)/length,0,1);if(p.distanceTo(from.clone().addScaledVector(segment,t))<1.4){m.alertT=1.4;m.navT=0;if(m.type==='runner')m.fleeT=2.8;else{m.strafeT=.8;m.strafe=m.flankSide||1;}}}}
+function reactToShot(from,to){hearShot(from);const segment=to.clone().sub(from),length=segment.lengthSq();if(!length)return;for(const m of state.monsters){if(m.dead||m.T.stationary)continue;const p=new THREE.Vector3(m.x,(m.y||0)+1,m.z),t=clamp(p.clone().sub(from).dot(segment)/length,0,1);if(p.distanceTo(from.clone().addScaledVector(segment,t))<1.4){m.alertT=1.4;m.navT=0;if(m.type==='runner')m.fleeT=2.8;else{m.strafeT=.8;m.strafe=m.flankSide||1;}}}}
 function fire() {
   state.shots++;
   const eye = camera.getWorldPosition(new THREE.Vector3());
@@ -1201,6 +1316,13 @@ function fire() {
   const hits = ray.intersectObjects(targets, true);
   const end = origin.clone().addScaledVector(dir, CFG.gun.range);
   const firstHit=hits.find(solidHit);
+  if(state.gameMode==='royale'){
+    // The shared muzzle ray already found the hit. Reuse it for the solo match
+    // authority instead of traversing all animated characters a third time.
+    royalePreparedShot={hit:firstHit};let accepted;
+    try{accepted=royale.fire('local',dir.toArray(),origin.toArray(),royaleDebt);}finally{royalePreparedShot=null;}
+    if(!accepted)return false;
+  }
   if (firstHit) {
     const h = firstHit, o = h.object; end.copy(h.point);
     if(o.userData.iceId!==undefined){if(network.role==='guest')network.action({kind:'ice-hit',id:o.userData.iceId,damage:CFG.gun.dmg});else iceCover.damage(o.userData.iceId,CFG.gun.dmg);emit('spark',h.point,5,2,.3,.7,.3);}
@@ -1208,7 +1330,7 @@ function fire() {
       const mm = o.userData.monster, head = (h.point.y - (mm.y || 0)) / mm.T.h > mm.T.headFrom;
       const damage=(operations.buffs.damage > 0 ? 1.8 : 1) * CFG.gun.dmg * (1 + 0.12 * up.dmg) * (head ? CFG.gun.headMul + 0.5 * up.head : (mm.T.bodyMul || 1));
       const armorBreak=mm.T.armored&&!mm.armorBroken&&mm.hp>mm.maxhp*.5&&mm.hp-damage<=mm.maxhp*.5&&mm.hp-damage>0;
-      damageMonster(mm, damage, h.point, false, head);
+      if(state.gameMode!=='royale')damageMonster(mm, damage, h.point, false, head);
       if(armorBreak){mm.armorBroken=true;state.armorCueT=.8;sfx.empty();}
       state.hits++; if (head) state.heads++;
       state.hitT = armorBreak ? .25 : head ? 0.22 : 0.12; state.hitHead = head;state.hitArmor=armorBreak; head ? sfx.headshot() : sfx.hit();
@@ -1222,7 +1344,7 @@ function fire() {
   else if(network.role==='guest')network.action({kind:'shot',pos:start.toArray(),end:end.toArray(),weapon:P.weapon});
   else if(network.role==='host')network.effect({kind:'shot',pos:start.toArray(),end:end.toArray(),owner:network.id,weapon:P.weapon});
   addTracer(start, end);
-  if(network.role!=='guest')reactToShot(start,end);
+  if(network.role!=='guest'&&state.gameMode!=='royale')reactToShot(start,end);
   const feel=weaponFeel[P.weapon];P.kick=Math.min(.075,P.kick+feel.kick*rand(.85,1.15)*(isAiming()?.7:1));P.yaw+=rand(-feel.side,feel.side);
   P.gk = 1; state.flashT = 0.05; shotLight.position.copy(start); sfx[CFG.gun.snd]();
 }
@@ -1255,6 +1377,7 @@ function updateSquadPing(){
 }
 
 function throwC4() {
+  if(state.gameMode==='royale')return;
   if (P.dead || P.c4 <= 0) return;
   playAttack('throw',.7);
   P.c4--; sfx.throw();
@@ -1399,6 +1522,7 @@ function updateHUD(dt) {
   const boss = state.monsters.find(m => m.T.boss && !m.dead); $('bossbar').classList.toggle('hidden', !boss);
   if (boss) { $('bossname').textContent = boss.T.name; $('bossfill').style.width = Math.max(0, boss.hp / boss.maxhp * 100) + '%'; }
   $('credits').textContent = '$' + state.credits;
+  $('armory-open').classList.toggle('hidden',!!network.role||state.gameMode==='duel'||P.dead);
   $('score').textContent = state.score; $('wname').textContent = P.unarmed?'FISTS':CFG.gun.name;$('ammobox').dataset.weapon=String(P.weapon);
   $('left').textContent = state.gameMode==='duel'?'FIRST TO 5':state.gameMode==='hunt'?`${30-(state.huntKilled||0)} TO HUNT`:`${aliveCount() + state.toSpawn + (state.bossQueued ? 1 : 0)} HOSTILES`;
   $('compass').textContent = ['N','NE','E','SE','S','SW','W','NW'][Math.round((( -P.yaw * 180 / Math.PI) % 360 + 360) % 360 / 45) % 8] + ' / ' + state.map.name.toUpperCase();
@@ -1415,14 +1539,15 @@ function update(dt) {
   iceCover.update(dt);updateIcePreview(dt);
   state.time += dt; if (!P.dead) state.matchT += dt;
   updatePlayer(dt); updateAimAssist(dt); updateCamera(dt); handleShooting(dt); updateMelee(dt);
-  if(state.gameMode!=='duel'){
+  if(state.gameMode==='royale'){updateRoyale(dt);}
+  else if(state.gameMode!=='duel'){
     operations.update(dt);
     if(network.role==='guest')updateGuestMonsters(dt);else{updateWaves(dt);updateMonsters(dt);updateBarrels(dt);}
     updateC4(dt);
   }
   updateRemotePlayers(dt);
   for(const animal of state.wildlife){animal.phase+=dt*2;animal.object.position.y=animal.y+Math.max(0,Math.sin(animal.phase))*.12;}
-  updateFx(dt); updateParticles(dt); updateFloaters(dt); updateProjs(dt); updateRings(dt); updateTracers(dt); updateGun(dt); updateAimTarget(dt); updateHUD(dt);
+  updateFx(dt); updateParticles(dt); updateFloaters(dt); updateProjs(dt); updateRings(dt); updateTracers(dt); updateGun(dt); updateAimTarget(dt); updateHUD(dt);if(state.gameMode==='royale'){royaleHUD();updateRoyaleSpectator(dt);}
 }
 // Lower resolution only after sustained slow frames; avoid reacting to loading stalls.
 let graphicsMode='performance',renderScale=Math.min(devicePixelRatio,PERF_SCALE),frameSamples=0,frameTotal=0;
@@ -1500,9 +1625,113 @@ function duelGuestSpawn(host){
   return [host.x,host.y,host.z];
 }
 
+let royale=null,royaleSnapshot=null,royaleZone=null,royaleEvents=0,royaleSpectating=null,royaleDebt=0,royaleSpectatorHeading=null;
+let royalePreparedShot=null;
+let royalePickupFactory=null;
+const royaleActors=new Map(),royaleLoot=new Map();
+function startRoyale(){
+  royaleActors.clear();royaleLoot.clear();royaleEvents=0;royaleSpectating=null;royaleDebt=0;royaleSpectatorHeading=null;
+  const radius=Math.min(...state.map.size)*.44;
+  const walkable=(x,z)=>Math.hypot(x,z)<radius&&!fieldBlocked(x,z,.7);
+  const visible=(a,b)=>{
+    // All procedural district walls and props have collision boxes. Test those
+    // rather than raycasting hundreds of rendered building parts for every bot.
+    for(const c of state.colliders){if(c.h<1.3)continue;
+      let near=0,far=1;
+      for(const axis of ['x','z']){const d=b[axis]-a[axis],lo=c[axis==='x'?'minX':'minZ'],hi=c[axis==='x'?'maxX':'maxZ'];
+        if(Math.abs(d)<1e-8){if(a[axis]<lo||a[axis]>hi){near=2;break;}}
+        else{const t0=(lo-a[axis])/d,t1=(hi-a[axis])/d;near=Math.max(near,Math.min(t0,t1));far=Math.min(far,Math.max(t0,t1));}
+      }
+      if(near<=far&&far>0&&near<1)return false;
+    }
+    return true;
+  };
+  royale=createRoyale({players:[{id:'local',name:selectedHero().name}],botCount:20,duration:600,seed:Date.now()|0,difficulty:state.difficulty,
+    world:{radius,walkable,visible,raycast:(from,direction,range)=>{
+      const query=royalePreparedShot?null:new THREE.Raycaster(new THREE.Vector3(...from),new THREE.Vector3(...direction),0,range);
+      const hit=royalePreparedShot?royalePreparedShot.hit:query.intersectObjects([...state.wallMeshes,...state.monsters.filter(m=>!m.dead).map(m=>m.group)],true).find(h=>!h.object.geometry?.userData.bulletPass?.[h.faceIndex]);
+      const actor=hit?.object.userData.monster;
+      return actor?.royaleId?{id:actor.royaleId,head:(hit.point.y-(actor.y||0))/actor.T.h>actor.T.headFrom}:null;
+    },spawn:random=>{for(let i=0;i<500;i++){const a=random()*Math.PI*2,r=Math.sqrt(random())*radius*.9,p={x:Math.sin(a)*r,z:Math.cos(a)*r};if(walkable(p.x,p.z))return p;}throw Error('No royale spawn available');}}});
+  royaleSnapshot=royale.snapshot();const self=royaleSnapshot.participants.find(p=>p.id==='local');
+  P.pos.set(self.x,0,self.z);P.safePos.copy(P.pos);P.hp=P.maxHp=100;P.c4=0;P.ammo=P.reserve=0;
+  state.wave=0;state.toSpawn=0;state.bossQueued=false;
+  for(const bot of royaleSnapshot.participants.filter(p=>p.bot)){const m=spawnMonster('shooter',bot.x,bot.z);m.maxhp=100;m.royaleId=bot.id;royaleActors.set(bot.id,m);}
+  royaleZone=new THREE.Mesh(new THREE.TorusGeometry(1,.006,4,96),new THREE.MeshBasicMaterial({color:0x59d9ff,transparent:true,opacity:.8}));
+  royaleZone.rotation.x=-Math.PI/2;royaleZone.position.y=.15;state.world.add(royaleZone);
+  $('objective').classList.remove('hidden');banner('BATTLE ROYALE · LOOT · SURVIVE · LAST ALIVE WINS');
+}
+function updateRoyale(dt){
+  if(!royale)return;
+  royale.move('local',P.pos.x,P.pos.z,dt);
+  royaleDebt+=dt;let advanced=false;
+  while(royaleDebt>=.05){royale.tick(.05);royaleDebt-=.05;advanced=true;}
+  if(advanced){
+    const previous=royaleSnapshot;royaleSnapshot=royale.snapshot();
+    for(const bot of previous.participants){const actor=royaleActors.get(bot.id);if(actor){actor.renderFromX=bot.x;actor.renderFromZ=bot.z;}}
+  }
+  const snap=royaleSnapshot,self=snap.participants.find(p=>p.id==='local');
+  if(advanced){P.pos.x=self.x;P.pos.z=self.z;}P.hp=self.hp;P.ammo=self.ammo;P.reserve=self.reserve;P.reloading=self.reload;P.reloadDur=1.3;
+  P.dead=!self.alive;state.kills=self.kills;state.score=self.kills*100;
+  P.unarmed=!self.weapon;P.weapon=0;CFG.gun=WEAPONS[0];
+  for(const bot of snap.participants){const m=royaleActors.get(bot.id);if(!m)continue;
+    m.x=bot.x;m.z=bot.z;m.hp=bot.hp;m.dead=!bot.alive;m.moving=bot.moving&&bot.alive;m.running=m.moving;m.moveSpeed=4.3;
+    if(!m.dead){const alpha=Math.min(1,royaleDebt/.05);m.group.position.set((m.renderFromX??m.x)+(m.x-(m.renderFromX??m.x))*alpha,0,(m.renderFromZ??m.z)+(m.z-(m.renderFromZ??m.z))*alpha);m.group.rotation.y=angleLerp(m.group.rotation.y,bot.yaw,Math.min(1,dt*10));}
+    if(m.dead)m.deadT+=dt;if(!m.group.userData.rig?.corpseSettled)animateMonster(m,dt,touchDevice);}
+  const present=new Set(snap.loot.map(l=>l.id));
+  for(const [id,mesh] of royaleLoot)if(!present.has(id)){mesh.removeFromParent();royaleLoot.delete(id);}
+  for(const item of snap.loot){let mesh=royaleLoot.get(item.id);if(!mesh){mesh=royalePickupFactory(item.kind);mesh.position.set(item.x,0,item.z);state.world.add(mesh);royaleLoot.set(item.id,mesh);}
+    if(self.alive&&Math.hypot(item.x-self.x,item.z-self.z)<2)royale.pickup('local',item.id);}
+  royaleZone.position.set(snap.zone.x,.15,snap.zone.z);royaleZone.scale.setScalar(snap.zone.radius);
+  for(const e of snap.events){if(e.seq<=royaleEvents)continue;royaleEvents=e.seq;
+    if(e.type==='elimination')banner(`${e.killerName} eliminated ${e.victimName}`);
+    if(e.type==='shot'){const from=new THREE.Vector3(e.x,1.3,e.z),to=from.clone().add(new THREE.Vector3(e.dx,e.dy||0,e.dz).multiplyScalar(40));addTracer(from,to);}}
+  if(snap.phase==='finished'){endMatch(snap.winner==='local');$('overstats').textContent=`Place #${self.placement} · ${self.kills} eliminations · Winner: ${snap.participants.find(p=>p.id===snap.winner)?.name||'No survivor'}`;}
+}
+function cycleRoyaleSpectator(){
+  if(!P.dead||!royaleSnapshot)return;
+  const living=royaleSnapshot.participants.filter(p=>p.alive&&p.id!=='local');
+  const old=royaleActors.get(royaleSpectating);if(old)old.group.visible=true;
+  royaleSpectating=spectatorTarget(royaleSnapshot,royaleSpectating,'local',true);
+}
+$('royale-heal').addEventListener('click',()=>{if(state.gameMode==='royale'&&!state.paused)royale?.heal('local');});
+$('royale-next').addEventListener('click',cycleRoyaleSpectator);
+document.addEventListener('keydown',e=>{if(state.gameMode!=='royale'||state.mode!=='playing'||state.paused||e.repeat)return;if(e.code==='KeyH')royale?.heal('local');if(e.code==='BracketRight')cycleRoyaleSpectator();});
+function updateRoyaleSpectator(dt){
+  if(!P.dead||!royaleSnapshot)return;
+  const next=spectatorTarget(royaleSnapshot,royaleSpectating);
+  if(next!==royaleSpectating){const old=royaleActors.get(royaleSpectating);if(old)old.group.visible=true;royaleSpectating=next;}
+  const target=royaleSnapshot.participants.find(p=>p.id===royaleSpectating);
+  if(!target)return;
+  const actor=royaleActors.get(target.id);if(actor)actor.group.visible=false;
+  camera.position.set(actor?.group.position.x??target.x,1.65,actor?.group.position.z??target.z);royaleSpectatorHeading=spectatorHeading(royaleSpectatorHeading,target,dt);camera.rotation.set(0,royaleSpectatorHeading.yaw,0);camera.fov=75;camera.updateProjectionMatrix();
+  gunPivot.visible=false;if(playerAvatar)playerAvatar.root.visible=false;
+  $('scope-overlay').classList.add('hidden');
+  $('objective-title').textContent='SPECTATING / '+target.name;
+}
+function royaleHUD(){
+  const snap=royaleSnapshot;if(!snap)return;
+  $('wave').textContent='BATTLE ROYALE';$('left').textContent=snap.remaining+' ALIVE';
+  $('objective-title').textContent=snap.phase==='prepare'?'PREPARE TO DROP':P.dead?'ELIMINATED · WATCHING MATCH':'STAY INSIDE THE BLUE ZONE';
+  $('radar-objective').textContent=`ZONE ${Math.ceil(snap.zone.radius)} m · ${Math.ceil(snap.zone.countdown)} s`;
+  $('armory-open').classList.add('hidden');
+  const self=snap.participants.find(p=>p.id==='local'),outside=Math.hypot(self.x-snap.zone.x,self.z-snap.zone.z)>snap.zone.radius;
+  $('objective-detail').textContent=snap.phase==='prepare'?`Match begins in ${Math.ceil(snap.zone.countdown)} seconds`:snap.time<20?`Deployment protection: ${Math.ceil(20-snap.time)} seconds`:outside?'OUTSIDE SAFE ZONE - MOVE TO THE BLUE CIRCLE':`${snap.zone.closing?'Zone closing':'Next contraction'} in ${Math.ceil(snap.zone.countdown)} seconds`;
+  $('side-objective').classList.add('hidden');$('waypoint').textContent='';$('interact').textContent='';
+  $('royale-controls').classList.remove('hidden');
+  $('weapon-slots').hidden=true;
+  $('wname').textContent=self.weapon==='smg'?'SMG':self.weapon==='rifle'?'ASSAULT RIFLE':'FIND A WEAPON';
+  if(!self.weapon)$('ammo').textContent='WALK TO A GOLD PICKUP';
+  $('c4txt').textContent=`ARMOR ${Math.ceil(self.armor)} / 100`;
+  $('royale-heal').hidden=P.dead;$('royale-heal').disabled=!self.meds||self.hp>=100;
+  $('royale-heal').textContent=`HEAL (${self.meds}) [H]`;$('royale-next').hidden=!P.dead;
+}
+
 async function startGame(key,setup=null) {
+  attackCoordinator.clear();botSounds.length=0;$('royale-controls').classList.add('hidden');$('weapon-slots').hidden=false;
   mapExpanded=false;$('expanded-map').classList.add('hidden');
   if(setup?.gameMode){state.gameMode=setup.gameMode;updateModeMenu();}
+  if(state.gameMode==='royale'){if(network.role){$('loadtxt').textContent='Battle Royale solo is available; leave the room to deploy.';return;}key='royale';}
   if(state.gameMode==='hunt')key='island';
   if(state.gameMode==='duel'&&!setup&&(network.role!=='host'||network.players.size!==2)){$('loadtxt').textContent='1V1 needs a room with exactly two players. Create a room, invite a friend, then choose a map.';return;}
   for(const entry of remoteAvatars.values())entry.avatar?.root.removeFromParent();
@@ -1533,6 +1762,10 @@ async function startGame(key,setup=null) {
   try { await dressMap(state,floorAt,buildCollision); }
   catch(e) { console.warn('Map dressing failed',e); }
   loadingStage('prepare','Preparing your operator…');
+  if(state.gameMode==='royale'){
+    try{royalePickupFactory=await prepareRoyalePickups(gunGroups[0]);}
+    catch(error){loadingIntro.stop();$('map-loading').classList.add('hidden');$('menu').classList.remove('hidden');$('loadtxt').textContent='Supply models failed to load. Try deploying again.';state.mode='menu';document.querySelectorAll('.mapbtn').forEach(b=>b.disabled=false);console.error(error);return;}
+  }
   try { playerAvatar=await buildHero();state.world.add(playerAvatar.root);playerAvatar.root.visible=false; }
   catch(e) { console.warn('Hero model unavailable',e); }
   loadingStage('prepare','Deployment ready · skip the intro to enter now');await loadingIntro.finish();
@@ -1542,7 +1775,7 @@ async function startGame(key,setup=null) {
   Object.assign(state, { credits: 0, shopOpen: false, bossQueued: false }); $('shop').classList.add('hidden'); $('bossbar').classList.add('hidden');
   Object.assign(state, { shots: 0, hits: 0, heads: 0, matchT: 0, hitHead: false });
   cancelIcePreview();iceCover.reset();
-  Object.assign(P, { unarmed:false,hp: 100, ammo: CFG.gun.mag, reserve: CFG.gun.reserve, maxHp: 100, reloadDur: 2, c4: CFG.c4.start, fireCd: 0, reloading: 0, dead: false, deadT: 0, kick: 0, bob: 0, onGround: true, jumping:false,jumpHeld:false, gk: 0, pitch: 0, weapon: 0, won: false });
+  Object.assign(P, { unarmed:false,hp: 100, ammo: CFG.gun.mag, reserve: CFG.gun.reserve, maxHp: 100, reloadDur: 2, c4: CFG.c4.start, fireCd: 0, triggerHeld:false, reloading: 0, dead: false, deadT: 0, kick: 0, bob: 0, onGround: true, jumping:false,jumpHeld:false, gk: 0, pitch: 0, weapon: 0, won: false });
   setRunLock(false);meleeTimer=meleeContact=rifleAnimTimer=0;attackName='';attackSeq=0;meleeIndex=0;
   const heroConfig=selectedHero();P.hp=P.maxHp=heroConfig.hp;CFG.walk=heroConfig.speed;CFG.sprint=heroConfig.speed*1.58;
   state.thirdPerson=state.cameraMode!=='first' && !!playerAvatar;
@@ -1561,7 +1794,8 @@ async function startGame(key,setup=null) {
     if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),guestSpawn:duelGuestSpawn(P.pos),gameMode:'duel',difficulty:state.difficulty});
     if(pendingDuelState){applyDuelState(pendingDuelState);pendingDuelState=null;}
     banner('FIND YOUR RIVAL · FIRST TO 5 KILLS');
-  }else if(network.role==='guest'){state.wave=1;state.toSpawn=0;if(state.gameMode==='hunt')operations.startHunt();else operations.start(1);if(pendingSnapshot){applyCoopSnapshot(pendingSnapshot);pendingSnapshot=null;}}
+  }else if(state.gameMode==='royale'){startRoyale();}
+  else if(network.role==='guest'){state.wave=1;state.toSpawn=0;if(state.gameMode==='hunt')operations.startHunt();else operations.start(1);if(pendingSnapshot){applyCoopSnapshot(pendingSnapshot);pendingSnapshot=null;}}
   else{if(state.gameMode==='hunt')startHunt();else startWave(1);if(network.role==='host')network.start({mapKey:key,spawn:P.pos.toArray(),gameMode:state.gameMode,difficulty:state.difficulty});}
   update(0);
   // Touch devices do not need pointer lock. Selecting a map should start the game immediately.
@@ -1686,6 +1920,7 @@ function deployIceFor(pos,yaw,owner){const center=icePosition(pos,yaw);return !!
 function updateIcePreview(dt){if(!icePlacement)return;icePreviewT-=dt;if(icePreviewT>0)return;icePreviewT=.1;const p=icePosition(P.pos,P.yaw),fallback=new THREE.Vector3(P.pos.x-Math.sin(P.yaw)*3.3,P.pos.y,P.pos.z-Math.cos(P.yaw)*3.3);iceCover.preview(p||fallback,P.yaw,!!p);}
 function cancelIcePreview(){icePlacement=false;iceCover.preview(null);}
 function deployIce(){
+  if(state.gameMode==='royale')return;
   if(state.mode!=='playing'||state.paused||P.dead)return;
   if(state.gameMode==='duel'){banner('ICE COVER IS AVAILABLE IN SOLO AND CO-OP');return;}
   if(!icePlacement){icePlacement=true;icePreviewT=0;banner('PLACE ICE · FIRE OR B / ICE TO CONFIRM');return;}
@@ -1840,12 +2075,13 @@ function updateModeMenu(){
   document.querySelectorAll('.modebtn').forEach(button=>button.classList.toggle('sel',button.dataset.mode===state.gameMode));
   document.querySelector('.lobby-heading').firstChild.textContent=state.gameMode==='duel'?'PRIVATE 1V1 ROOM ':state.gameMode==='hunt'?'ISLAND HUNT ROOM ':'ONLINE CO-OP ';
   $('lobby-status').textContent=state.gameMode==='duel'?'Choose a room code, invite one friend, then select a map. First to 5 kills wins.':state.gameMode==='hunt'?'Choose a room code and invite your friend. Hunt 30 monsters across the island.':'Choose a room code, or enter your friend’s code. Up to four players.';
-  document.querySelectorAll('.mapbtn').forEach(button=>button.classList.toggle('hidden',(button.dataset.key==='island')!==(state.gameMode==='hunt')));
+  document.querySelectorAll('.mapbtn').forEach(button=>button.classList.toggle('hidden',state.gameMode==='royale'?button.dataset.key!=='royale':button.dataset.key==='royale'||(button.dataset.key==='island')!==(state.gameMode==='hunt')));
   network.render();
 }
 document.querySelectorAll('.modebtn').forEach(b=>b.addEventListener('click',()=>{state.gameMode=b.dataset.mode;updateModeMenu();}));
-const MAP_SELECTION_ORDER = ['outpost', 'yard', 'oldquarter', 'ep73', 'skibidi', 'crypt', 'island'];
-for (const [order, key] of MAP_SELECTION_ORDER.filter(key => MAPS[key]).entries()) {
+const MAP_SELECTION_ORDER = ['outpost', 'yard', 'oldquarter', 'ep73', 'skibidi', 'crypt', 'island', 'royale'];
+const selectableMaps = [...new Set([...MAP_SELECTION_ORDER, ...Object.keys(MAPS)])].filter(key => MAPS[key]);
+for (const [order, key] of selectableMaps.entries()) {
   const m = MAPS[key];
   const b = document.createElement('button'); b.className = 'mapbtn map-' + key; b.disabled = true; b.dataset.key = key;
   b.innerHTML = `<span class="map-index">${String(order+1).padStart(2,"0")} / ${(m.open&&!m.zone)||m.island ? "OPEN WORLD" : "COMBAT ZONE"}</span><span class="map-art"></span><b>${m.name}</b><small>${m.desc}</small><span class="deploy">DEPLOY ↗</span>`;

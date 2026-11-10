@@ -1,0 +1,72 @@
+[
+  {
+    "map": "island",
+    "size": [
+      360,
+      360
+    ],
+    "buildingHeights": [
+      3
+    ],
+    "cars": 0
+  },
+  {
+    "map": "skibidi",
+    "worldScale": 0.5,
+    "references": []
+  },
+  {
+    "map": "ep73",
+    "worldScale": 1,
+    "references": []
+  },
+  {
+    "map": "outpost",
+    "size": [
+      200,
+      200
+    ],
+    "buildingHeights": [
+      6,
+      3.2,
+      3.5,
+      4.5,
+      3
+    ],
+    "cars": 0
+  },
+  {
+    "map": "royale",
+    "size": [
+      400,
+      400
+    ],
+    "buildingHeights": [
+      6,
+      3.2,
+      3.5,
+      4.5,
+      3,
+      4
+    ],
+    "cars": 18
+  },
+  {
+    "map": "yard",
+    "size": [
+      60,
+      60
+    ],
+    "buildingHeights": [],
+    "cars": 0
+  },
+  {
+    "map": "crypt",
+    "size": [
+      50,
+      50
+    ],
+    "buildingHeights": [],
+    "cars": 0
+  }
+]

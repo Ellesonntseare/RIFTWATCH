@@ -67,6 +67,20 @@ const open = (name, desc, file, fit, o = {}) => ({
   blocks: [], barrels: [], spawns: [[0, 0]], start: [0, 0], lights: [], ...o,
 });
 
+function buildRoyaleDistrict(){
+  const map=buildOutpost();
+  map.name='Frontier District';map.desc='400 m district · 36 buildings · motor checkpoints';
+  map.size=[400,400];map.fog=[0x9db0c4,90,260];map.royaleOnly=true;
+  // Keep existing human-sized structures; expand the playable territory instead.
+  for(let i=0;i<24;i++){
+    const a=i*Math.PI/12,x=Math.sin(a)*145,z=Math.cos(a)*145;
+    map.blocks.push(...building(x,z,14+(i%3)*3,12,4+(i%2)*2,['n','e','s','w'][i%4],4));
+  }
+  map.blocks.push(['road',0,0,10,400],['road',0,0,400,10]);
+  map.cars=Array.from({length:18},(_,i)=>({x:(i%2?1:-1)*8,z:-170+Math.floor(i/2)*38,yaw:0}));
+  return map;
+}
+
 export const MAPS = {
   island: {
     name: 'Shatter Island', desc: 'Open island · forest trails · abandoned field camp',
@@ -81,6 +95,7 @@ export const MAPS = {
   ep73: open('Ashfall District', 'Urban ruins · close quarters · street supplies', 'map_ep_73.glb', 300, {worldScale:1}),
   oldquarter: open('Old Quarter', 'City street · close-range urban combat', 'old_quarter.glb', 70, {worldScale:1.4, zone:true, sky:0x8095a4, fog:[0x8095a4,45,150]}),
   outpost: buildOutpost(),
+  royale: buildRoyaleDistrict(),
 
   yard: {
     name: 'Warehouse Yard',

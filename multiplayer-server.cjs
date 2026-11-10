@@ -2,7 +2,7 @@ const {WebSocketServer,WebSocket}=require('ws');
 const {shotHit,TARGET_KILLS,RESPAWN_MS}=require('./duel-rules.cjs');
 const MAPS=new Set(['outpost','yard','crypt','ep73','skibidi','island','oldquarter']);
 const ROOM_CODE=/^[A-Z0-9]{4,16}$/;
-const HEROES=new Set(['personal','tactical','vanguard','sentinel']);
+const HEROES=new Set(['personal','tactical','vanguard','sentinel','runner-fast','runner-run','runner-jump','runner-roll']);
 const ATTACKS=new Set(['punch','elbow','kneeCombo','dropKick','daggers','fireRifle','throw']);
 const vector=p=>Array.isArray(p)&&p.length===3&&p.every(n=>Number.isFinite(n)&&Math.abs(n)<12000);
 

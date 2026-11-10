@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createRoyale} from '../public/js/royale-rules.js';
+const world={radius:90,walkable:(x,z)=>Math.abs(x)<90&&Math.abs(z)<90,visible:()=>true,spawn:r=>({x:(r()-.5)*150,z:(r()-.5)*150})};
+const make=(extra={})=>createRoyale({players:[{id:'human',name:'Operator'}],botCount:12,duration:120,seed:41,world,...extra});
+const advance=(m,t)=>{for(let i=0;i<t*10;i++)m.tick(.1);};
+test('royale distributes unique participants and starts with a preparation phase',()=>{const m=make(),s=m.snapshot();assert.equal(s.phase,'prepare');assert.equal(s.participants.length,13);for(const a of s.participants)for(const b of s.participants)if(a!==b)assert(Math.hypot(a.x-b.x,a.z-b.z)>14);assert.equal(m.fire('human',[1,0,0]),false);advance(m,11);assert.equal(m.snapshot().phase,'active');});
+test('bots loot and eliminate other bots independently, ending with real placements',()=>{const m=make();advance(m,11);m.disconnect('human');advance(m,260);const s=m.snapshot();assert(s.events.some(e=>e.type==='elimination'&&e.killer?.startsWith('bot-')&&e.victim.startsWith('bot-')));assert.equal(s.phase,'finished');assert.equal(s.remaining,1);assert(s.winner.startsWith('bot-'));assert.equal(new Set(s.participants.map(p=>p.placement)).size,s.participants.length);});
+test('eliminated competitors cannot move, fire, reload, heal or claim loot',()=>{const m=make();advance(m,11);m.disconnect('human');const s=m.snapshot(),p=s.participants.find(p=>p.id==='human');assert.equal(m.move(p.id,p.x,p.z,.1),false);assert.equal(m.fire(p.id,[1,0,0]),false);assert.equal(m.pickup(p.id,s.loot[0].id),false);assert.equal(m.reload(p.id),false);assert.equal(m.heal(p.id),false);});
+test('zone targets stay inside previous circles and distant loot cannot be stolen',()=>{const m=make();advance(m,11);const s=m.snapshot(),z=s.zone;assert(Math.hypot(z.nextX-z.x,z.nextZ-z.z)+z.nextRadius<=z.radius+.001);const p=s.participants.find(p=>p.id==='human'),far=s.loot.find(l=>Math.hypot(l.x-p.x,l.z-p.z)>10);assert.equal(m.pickup(p.id,far.id),false);assert.equal(m.move(p.id,p.x+50,p.z,.1),false);});

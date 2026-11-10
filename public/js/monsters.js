@@ -1,3 +1,4 @@
+import {RUNNER_MOTION} from './runner-motion-data.js';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import {createFootGrounding} from './foot-grounding.js';
@@ -54,8 +55,12 @@ export async function loadMonsterModels(loader, onStep, bvh) {
       const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
       const wrap = new THREE.Group(); wrap.add(g.scene);
       g.scene.position.set(-c.x, -box.min.y, -c.z);
-      const clips = g.animations.map(a => { a.tracks = a.tracks.filter(t => !(/\.position$/.test(t.name) && /(hips|root|pelvis|armature)/i.test(t.name))); return a; });
+      let clips = g.animations.map(a => { a.tracks = a.tracks.filter(t => !(/\.position$/.test(t.name) && /(hips|root|pelvis|armature)/i.test(t.name))); return a; });
       if(!clips.length)clips.push(...legClips(wrap));
+      for(const [mode,data] of Object.entries(RUNNER_MOTION[f]||{})){
+        const clip=THREE.AnimationClip.parse({...data,uuid:THREE.MathUtils.generateUUID()});clip.name=mode==='idle'?'idleWgun':mode;
+        clips=clips.filter(c=>c.name!==clip.name);clips.push(clip);
+      }
       let skin = false; wrap.traverse(o => { if (o.isSkinnedMesh) skin = true; });
       tpl[k] = { scene: wrap, size, clips, skin, skinned: clips.length > 0 };
       if (bvh && !skin) wrap.traverse(o => { if (o.isMesh && !o.geometry.boundsTree) o.geometry.boundsTree = new bvh.MeshBVH(o.geometry); });
@@ -189,7 +194,7 @@ export function animateMonster(m, dt, lowDetail=false) {
   }
   rig.t += dt * (m.moving ? 9 : 2);
   if (rig.mixer) {
-    const locomotion=m.running&&rig.actions.run?'run':rig.actions[T.clip]?T.clip:'walk';
+    const locomotion=m.running&&rig.actions.fastRun?'fastRun':m.running&&rig.actions.run?'run':rig.actions[T.clip]?T.clip:'walk';
     // Shooting must not replace a walking enemy's leg cycle.
     const action=m.moving?locomotion:m.shootAnim>0?'shooting':m.attackAnim>0?(T.ranged?'shooting':'melee'):(T.idle||'idleWgun');
     play(rig,rig.actions[action]?action:m.moving?locomotion:(T.idle||'idleWgun'));
